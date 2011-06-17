@@ -4,7 +4,7 @@
 // Author:    Erick Johnson
 // ==========================================================================
 var Klass, index;
-module("DataStructures.DetailProvider", {
+module("DataStructures.Indexable Mixin", {
   setup: function() {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
