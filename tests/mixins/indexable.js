@@ -1,10 +1,15 @@
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
 var Klass, index;
-module("Contact.DetailProvider", {
+module("DataStructures.DetailProvider", {
   setup: function() {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
-    index = Contact.BasicIndex.create();
-    Klass = SC.Object.extend(Contact.Indexable, {
+    index = DataStructures.BasicIndex.create();
+    Klass = SC.Object.extend(DataStructures.Indexable, {
       indexable: function() {
         return [this.get('key'),this.get('val')];
       }.property('key','val').cacheable(),
@@ -97,7 +102,7 @@ test("indexables are mutable", function() {
 });
 
 test("indexes can change", function() {
-  var i, index2 = Contact.BasicIndex.create();
+  var i, index2 = DataStructures.BasicIndex.create();
   SC.run(function() {
     i = Klass.create({
       index: index,

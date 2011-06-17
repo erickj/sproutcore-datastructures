@@ -1,15 +1,15 @@
 // ==========================================================================
-// Project:   Contact.QueryArray Unit Test
+// Project:   DataStructures.QueryArray Unit Test
 // Copyright: ©2011 Junction Networks
 // ==========================================================================
-/*globals Contact module test ok equals same stop start */
+/*globals DataStructures module test ok equals same stop start */
 var q, a, qa;
 var EXPECTED_LENGTH = 10;
 var EXPECTED_START = 4;
 var EXPECTED_END = 13;
 var CONDITION = "value <= %@ AND value > %@".fmt(EXPECTED_END, EXPECTED_START - 1);
 
-module("Contact Query Array", {
+module("DataStructures Query Array", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
@@ -38,7 +38,7 @@ module("Contact Query Array", {
 
 test("QueryArrays have length and map indexes to the hidden array", function() {
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });
@@ -63,7 +63,7 @@ test("QueryArrays have length and map indexes to the hidden array", function() {
 
 test("QueryArrays update live", function() {
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });
@@ -94,7 +94,7 @@ test("QueryArrays update live", function() {
 
 test("QueryArrays observe reference array object updates", function() {
   SC.run(function() {
-    qa = Contact.QueryArray.create();
+    qa = DataStructures.QueryArray.create();
     qa.set('referenceArray',a);
     qa.set('query',q);
   });
@@ -138,7 +138,7 @@ test("QueryArrays content is accessible with objectAt", function() {
   var c = 0;
 
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });
@@ -153,7 +153,7 @@ test("QueryArrays content is accessible with objectAt", function() {
 
 test("Query array can be replaced and all is well", function() {
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });
@@ -189,7 +189,7 @@ test("Query array can be replaced and all is well", function() {
 
 test("Query Array indexOf and lastIndexOf", function() {
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });
@@ -221,7 +221,7 @@ test("QueryArrays have observable enumerable content", function() {
   var c = 0;
 
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q,
       _cqa_test_enumContentObserver: function() {
@@ -297,7 +297,7 @@ test("QueryArrays have observable enumerable content", function() {
 });
 
 test("QueryArrays behavew with addArrayObservers/removeArrayObservers", function() {
-  qa = Contact.QueryArray.create();
+  qa = DataStructures.QueryArray.create();
 
   var didChangeArgs = { count: 0 },
     didChange = function(start, removed, added) {
@@ -336,7 +336,7 @@ test("QueryArrays can add range observers", function() {
   var c = 0;
 
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });
@@ -411,7 +411,7 @@ test("QueryArrays can add range observers", function() {
 
 test("large modifications will get chunked up on timeout", function() {
   SC.run(function() {
-    qa = Contact.QueryArray.create({
+    qa = DataStructures.QueryArray.create({
       referenceArray: a,
       query: q
     });

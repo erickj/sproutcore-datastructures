@@ -1,7 +1,12 @@
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
 /**
  * an extremely basic index, effectively just a hash of arrays
  */
-Contact.BasicIndex = SC.Object.extend({
+DataStructures.BasicIndex = SC.Object.extend({
   isIndexer: YES,
 
   table: null,

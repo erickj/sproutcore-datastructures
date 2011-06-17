@@ -1,0 +1,24 @@
+== DataStructure & Design Pattern Library: ==
+
+This is a haphazard attempt at implementing some useful design
+patterns in a generic KVO manner along with a home for missing data
+structures from the core Sproutcore frameworks that I find useful
+
+=== INSTALLATION ===
+
+In your frameworks directory, run:
+  git clone git://github.com/junction/sproutcore-datastructures.git datastructures
+
+=== CONTRIBUTORS ===
+Author: Erick Johnson
+
+Contributors:
+        Tim Evans
+
+=== How To ===
+
+see the tests for documentation
+
+=== LICENSE ===
+
+see license.js

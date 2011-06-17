@@ -1,14 +1,14 @@
 // ==========================================================================
-// Project:   Contact.SuffixHash Unit Test
+// Project:   DataStructures.BasicIndex Unit Test
 // Copyright: ©2011 Junction Networks
 // ==========================================================================
-/*globals Contact module test ok equals same stop start */
+/*globals DataStructures module test ok equals same stop start */
 var b;
-module("Contact.BasicIndex", {
+module("DataStructures.BasicIndex", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
-    b = Contact.BasicIndex.create();
+    b = DataStructures.BasicIndex.create();
 
     SC.run(function() {
       SC.Logger.log('setup runloop execute');
@@ -45,7 +45,7 @@ test("basic indexes can add values", function() {
 });
 
 test("basic index is destroyable", function() {
-  var bi = Contact.BasicIndex.create();
+  var bi = DataStructures.BasicIndex.create();
   bi.destroy();
   ok(bi.get('isDestroyed'), 'bi should be destroyed');
 });

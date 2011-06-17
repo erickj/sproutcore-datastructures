@@ -1,8 +1,9 @@
 // ==========================================================================
-// Project:   Contact.Composite Unit Test
+// Project:   DataStructures & Design Pattern Library
 // Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
 // ==========================================================================
-/*globals Contact module test ok equals same stop start MyApp */
+/*globals DataStructures module test ok equals same stop start MyApp */
 
 var Part, Car;
 var basicInterface = [
@@ -14,7 +15,7 @@ var basicInterface = [
   'compositeHasParent',
   'compositeSupplant'
 ];
-module("Contact Composite Mixin", {
+module("DataStructures Composite Mixin", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
@@ -38,8 +39,8 @@ module("Contact Composite Mixin", {
       }
     };
 
-    Car = SC.Object.extend(Contact.Composite, component);
-    Part = SC.Object.extend(Contact.Composite, component);
+    Car = SC.Object.extend(DataStructures.Composite, component);
+    Part = SC.Object.extend(DataStructures.Composite, component);
 
     SC.run(function() {
       SC.Logger.log('setup runloop execute');
@@ -55,7 +56,7 @@ module("Contact Composite Mixin", {
   }
 });
 
-test("Contact.Composite are inited", function () {
+test("DataStructures.Composite are inited", function () {
   var c = Car.create({
     DEBUG_COMPOSITE: true
   });
@@ -124,7 +125,7 @@ test("Contact.Composite are inited", function () {
   ok(p2.weight.isDynamicCompositeProperty, 'p2[weight] should be a dynamic computed property');
 });
 
-test("Contact.Composite are destroyed", function () {
+test("DataStructures.Composite are destroyed", function () {
   var c2,p1,p2;
   SC.run(function() {
     c2 = Car.create();
@@ -331,7 +332,7 @@ test("compositeList is observable", function() {
 });
 
 // TODO: remove this b.s.
-test("Contact.Composite can add noncomposites on the fly", function() {
+test("DataStructures.Composite can add noncomposites on the fly", function() {
   var veyron = Car.create({
     weight: 1000,
     horsePower: 500
@@ -349,7 +350,7 @@ test("Contact.Composite can add noncomposites on the fly", function() {
  * focus on hooking up compositeParent automatically (no need to call +addCompositeChild+)
  */
 test("property compositeParent should auto add object as parent", function() {
-  var zeus = SC.Object.create(Contact.Composite, {
+  var zeus = SC.Object.create(DataStructures.Composite, {
       offspring: function() {
         return this.doCompositeOperation('get', 'name');
       }
@@ -357,7 +358,7 @@ test("property compositeParent should auto add object as parent", function() {
     children = ['Aphrodite','Orion','Ares','Apollo'];
 
   children.forEach(function(n) {
-    SC.Object.create(Contact.Composite, {
+    SC.Object.create(DataStructures.Composite, {
       compositeParents: zeus,
       name: n
     });
@@ -375,7 +376,7 @@ test("property compositeParent should auto add object as parent", function() {
  * this is very similar to test 2 in implementation but focuses on KVO aspects
  */
 test("compositeProperties should be observable and propogate changes up the composite", function() {
-   var forest = SC.Object.create(Contact.Composite, {
+   var forest = SC.Object.create(DataStructures.Composite, {
                               name: 'forest',
                               didChangeCount: 0,
                               allTheLeaves: function() {
@@ -389,7 +390,7 @@ test("compositeProperties should be observable and propogate changes up the comp
                                 this._unboundValue = val;
                               }.observes('leaves')
                             }),
-    Tree = SC.Object.extend(Contact.Composite, {
+    Tree = SC.Object.extend(DataStructures.Composite, {
                               compositeProperties: ['leaves'],
                               compositeParents: forest,
                               leaves: null,
@@ -439,7 +440,7 @@ test("compositeProperties should be observable and propogate changes up the comp
   equals(forest._unboundValue, 200, 'forest should have 200 leaves');
 
   // and it should continue through multiple levels
-  var Branch = SC.Object.extend(Contact.Composite, {
+  var Branch = SC.Object.extend(DataStructures.Composite, {
     compositeProperties: ['leaves']
   });
 
@@ -492,7 +493,7 @@ test("compositeProperties should be observable and propogate changes up the comp
 });
 
 test("dynamic composite properties aren't totally fucking insane", function() {
-  var UPSTruck = SC.Object.extend(Contact.Composite, {
+  var UPSTruck = SC.Object.extend(DataStructures.Composite, {
     _assortedItems: null,
 
     // use cargo to test computed property setters
@@ -510,7 +511,7 @@ test("dynamic composite properties aren't totally fucking insane", function() {
     }.property('boxedItems').cacheable().compositeProperty()
   });
 
-  var BagOfStuff = SC.Object.extend(Contact.Composite, {
+  var BagOfStuff = SC.Object.extend(DataStructures.Composite, {
     compositeProperties: ['cargo'],
     cargo: null
   });
@@ -551,11 +552,11 @@ test("dynamic composite properties aren't totally fucking insane", function() {
 });
 
 test("a composite member can have multiple parents... watch out for paradoxes", function() {
-  var _1985 = SC.Object.create(Contact.Composite, { year: '1985'}),
-    _1955 = SC.Object.create(Contact.Composite, { year: '1955'}),
-    _1885 = SC.Object.create(Contact.Composite, { year: '1885'});
+  var _1985 = SC.Object.create(DataStructures.Composite, { year: '1985'}),
+    _1955 = SC.Object.create(DataStructures.Composite, { year: '1955'}),
+    _1885 = SC.Object.create(DataStructures.Composite, { year: '1885'});
 
-  var delorian = SC.Object.create(Contact.Composite, {
+  var delorian = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['characters'],
     compositeParents: [_1985, _1955, _1885],
 
@@ -583,7 +584,7 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
   equals(_1955.get('characters').length, 7, '1985 has 7 characters');
   equals(_1885.get('characters').length, 4, '1885 has 4 characters');
 
-  var timeTrain = SC.Object.create(Contact.Composite, {
+  var timeTrain = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['characters'],
     compositeParents: [_1985, _1885],
     characters: ['Wild West Doc Brown', 'Mrs. Clara Brown']
@@ -603,10 +604,10 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
 });
 
 test("allow modifying composite DAGs via altering compositeParents prop", function() {
-  var _1985 = SC.Object.create(Contact.Composite, { year: '1985'}),
-    _1955 = SC.Object.create(Contact.Composite, { year: '1955'});
+  var _1985 = SC.Object.create(DataStructures.Composite, { year: '1985'}),
+    _1955 = SC.Object.create(DataStructures.Composite, { year: '1955'});
 
-  var delorian = SC.Object.create(Contact.Composite, {
+  var delorian = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['characters'],
     compositeParents: null,
 
@@ -633,7 +634,7 @@ test("allow modifying composite DAGs via altering compositeParents prop", functi
  * if the composite is a leaf return the current value as is
  */
 test('orig values remain as primitive or array', function() {
-  var aComposite = SC.Object.create(Contact.Composite, {
+  var aComposite = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['anArray', 'aPrimitive'],
     anArray: [1],
     aPrimitive: 1
@@ -642,7 +643,7 @@ test('orig values remain as primitive or array', function() {
   ok(aComposite.get('aPrimitive') === 1, 'aPrimitive should equal 1 - while aComposite is a leaf');
   ok(aComposite.get('anArray').indexOf(1) >= 0, 'anArray should contain "1"');
 
-  var aCompositeChild = SC.Object.create(Contact.Composite, {
+  var aCompositeChild = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['anArray', 'aPrimitive'],
     compositeParents: [aComposite],
     anArray: ['d','e','f'],
@@ -664,7 +665,7 @@ test('orig values remain as primitive or array', function() {
  */
 /*
 test("modifying an array value is possible", function() {
-  var aComposite = SC.Object.create(Contact.Composite, {
+  var aComposite = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['anArray'],
     anArray: []
   });
@@ -674,7 +675,7 @@ test("modifying an array value is possible", function() {
 
   ok(aComposite.get('anArray').indexOf(1) >= 0, 'TODO: anArray should contain 1');
 
-  var aCompositeChild = SC.Object.create(Contact.Composite, {
+  var aCompositeChild = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['anArray'],
     compositeParents: [aComposite],
     anArray: null
@@ -690,7 +691,7 @@ test("modifying an array value is possible", function() {
 */
 
 test("test load for aggregating composites", function() {
-  var Forest = SC.Object.extend(Contact.Composite, {
+  var Forest = SC.Object.extend(DataStructures.Composite, {
       compositeProperties: ['trees'],
       trees: null,
 
@@ -707,15 +708,15 @@ test("test load for aggregating composites", function() {
         }
       }
     }),
-    Tree = SC.Object.extend(Contact.Composite, {
+    Tree = SC.Object.extend(DataStructures.Composite, {
       compositeProperties: ['branches'],
       branches: null
     }),
-    Branch = SC.Object.extend(Contact.Composite, {
+    Branch = SC.Object.extend(DataStructures.Composite, {
       compositeProperties: ['leaves'],
       leaves: null
     }),
-    Leaf = SC.Object.extend(Contact.Composite, {
+    Leaf = SC.Object.extend(DataStructures.Composite, {
       compositeProperties: ['stomata'],
       stomata: null
     });

@@ -1,4 +1,9 @@
-Contact.Indexable = {
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
+DataStructures.Indexable = {
 
   /* quack */
   isIndexable: YES,

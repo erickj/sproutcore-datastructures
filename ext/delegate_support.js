@@ -1,3 +1,8 @@
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
 SC.mixin(SC.DelegateSupport, {
   delegateAPI: function(target, api, targetScope) {
     var scope = targetScope || this;

@@ -1,9 +1,14 @@
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
 require("system/basic_index");
 
 /**
  * this datastructure would be much better off as a suffix trie
  */
-Contact.SubstringHash = Contact.BasicIndex.extend({
+DataStructures.SubstringHash = DataStructures.BasicIndex.extend({
   min: 1,
   max: 15,
 

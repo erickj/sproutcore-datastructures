@@ -1,6 +1,11 @@
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
 require('ext/delegate_support');
 
-Contact.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
+DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   MAXTIME: 100,
 
   referenceArray: null,

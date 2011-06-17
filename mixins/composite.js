@@ -1,8 +1,9 @@
 // ==========================================================================
-// Project:   Contact
+// Project:   DataStructures & Design Pattern Library
 // Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
 // ==========================================================================
-/*globals Contact */
+/*globals DataStructures */
 
 /**
   @namespace
@@ -14,7 +15,7 @@
   bottom up composible.  So no part at the top needs to know about
   new composite properties added from the bottom.
 */
-Contact.Composite = {
+DataStructures.Composite = {
   DEBUG_COMPOSITE: NO,
 
   compositeParents: null, // can be an array or object
@@ -84,10 +85,10 @@ Contact.Composite = {
     }
 
     // this for loop is the effective opposite of SC.mixin
-    for (var p in Contact.Composite) {
-      if (Contact.Composite.hasOwnProperty(p)
+    for (var p in DataStructures.Composite) {
+      if (DataStructures.Composite.hasOwnProperty(p)
           && this[p]
-          && SC.isEqual(this[p], Contact.Composite[p])) {
+          && SC.isEqual(this[p], DataStructures.Composite[p])) {
         if (debug) SC.Logger.log('Composite+destroy+: removing property',p);
 
         if (this.hasOwnProperty(p)) {
@@ -217,8 +218,8 @@ Contact.Composite = {
       // TODO: this doesn't really work - destroyMixin doesn't get added
       // as a concatenatedProperty - thus doesn't get called on object destroy
       // when the Composite is lazily mixed in
-      SC.mixin.apply(c, [Contact.Composite]);
-      Contact.Composite.initMixin.apply(c,[]);
+      SC.mixin.apply(c, [DataStructures.Composite]);
+      DataStructures.Composite.initMixin.apply(c,[]);
     }
 
     if (this.DEBUG_COMPOSITE)
@@ -275,8 +276,8 @@ Contact.Composite = {
     if (this.compositeHasChild(p)) return null;
 
     if (!p.isCompositePiece) {
-      SC.mixin.apply(p, [Contact.Composite]);
-      Contact.Composite.initMixin.apply(p,[]);
+      SC.mixin.apply(p, [DataStructures.Composite]);
+      DataStructures.Composite.initMixin.apply(p,[]);
     }
 
     p.addCompositeChild(this);

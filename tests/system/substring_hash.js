@@ -1,14 +1,14 @@
 // ==========================================================================
-// Project:   Contact.SuffixHash Unit Test
+// Project:   DataStructures.SubstringHash Unit Test
 // Copyright: ©2011 Junction Networks
 // ==========================================================================
-/*globals Contact module test ok equals same stop start */
+/*globals DataStructures module test ok equals same stop start */
 var h;
-module("Contact Substring Hash", {
+module("DataStructures Substring Hash", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
-    h = Contact.SubstringHash.create();
+    h = DataStructures.SubstringHash.create();
 
     SC.run(function() {
       SC.Logger.log('setup runloop execute');
@@ -26,7 +26,7 @@ module("Contact Substring Hash", {
 });
 
 test("substring hash does exist", function() {
-  ok(Contact.SubstringHash, "Contact.SubstringHash should exist");
+  ok(DataStructures.SubstringHash, "DataStructures.SubstringHash should exist");
 
   var methods = ['index','lookup','remove'];
   methods.forEach(function(m) {
