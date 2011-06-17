@@ -4,6 +4,10 @@ This is a haphazard attempt at implementing some useful design
 patterns in a generic KVO manner along with a home for missing data
 structures from the core Sproutcore frameworks that I find useful
 
+=== Requirements ===
+
+DataStructures has been built and tested against Sproutcore 1.5 only
+
 === INSTALLATION ===
 
 In your frameworks directory, run:
