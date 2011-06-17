@@ -8,6 +8,9 @@ require('ext/delegate_support');
 DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   MAXTIME: 100,
 
+  /* quack */
+  isQueryArray: true,
+
   referenceArray: null,
   query: null,
 
