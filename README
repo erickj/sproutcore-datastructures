@@ -13,6 +13,25 @@ DataStructures has been built and tested against Sproutcore 1.5 only
 In your frameworks directory, run:
   git clone git://github.com/junction/sproutcore-datastructures.git datastructures
 
+=== Current Implementation ===
+
+- mixins/composite:
+  A mixin to make any sproutcore object a member to a bottom up
+  composible DAG.  The composite pattern is useful for representing a
+  larger object as a set of discrete parts.  This implementation is a
+  modification of the composite pattern described in the gang of four
+  book.
+
+- system/query_array:
+  Can be thought of like a generic RecordArray that is NOT tied to the
+  store.  It allows you to apply an SC.Query (from datastore
+  framework) to any array like object and end up with a 0 indexed
+  fully observable array.
+
+- system/basic_index & system/substring_hash:
+  A very dirty lookup table implementation.  Likely to change severely
+  in the future
+
 === CONTRIBUTORS ===
 Author: Erick Johnson
 
