@@ -13,6 +13,34 @@ DataStructures has been built and tested against Sproutcore 1.5 only
 In your frameworks directory, run:
   git clone git://github.com/junction/sproutcore-datastructures.git datastructures
 
+Requires the 2 line bug fix be made to SC.IndexSet:
+
+http://pastebin.com/TQPegwAk
+
+    $ git show head
+    commit 3987ac0bb73a1cfbd07081f30cccecd01e845470
+    Author: Erick Johnson <erick@junctionnetworks.com>
+    Date:   Mon Jun 13 11:13:51 2011 -0400
+
+        fixed chained call to endPropertyChanges
+
+    diff --git a/frameworks/runtime/system/index_set.js b/frameworks/runtime/system/index_set.js
+    index 235c402..9af2e06 100644
+    --- a/frameworks/runtime/system/index_set.js
+    +++ b/frameworks/runtime/system/index_set.js
+    @@ -383,8 +383,8 @@ SC.IndexSet = SC.mixin({},
+               .set('max', start.max)
+               .set('length', start.length)
+               .set('source', start.source)
+    -          .enumerableContentDidChange()
+    -        .endPropertyChanges();
+    +          .enumerableContentDidChange();
+    +        this.endPropertyChanges();
+             return this ;
+
+           } else {
+
+
 === Current Implementation ===
 
 - mixins/composite:
