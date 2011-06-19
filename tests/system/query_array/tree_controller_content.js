@@ -59,11 +59,11 @@ test("use query array as content item for a tree controller", function() {
   });
 
   var ao = dummyTree.get('arrangedObjects');
-  equals(ao.get('length'), items.length, "prereq - ok dummyTree works w/ normal arrays");
+  equals(ao.get('length'), items.length, "prereq - dummyTree works w/ normal arrays");
 
   items.pushObject(SC.Object.create({name: 'object %@'.fmt(items.length + 1)}));
 
-  equals(ao.get('length'), items.length, "prereq - dummyTree updates with content");
+  equals(ao.get('length'), items.length, "prereq - dummyTree with plain old array updates with content");
 
   // setup an observer to prove the observers on query array are firing
   var observerResults = {
@@ -85,9 +85,6 @@ test("use query array as content item for a tree controller", function() {
       qaWillChange: function() {
         observerResults.qaWillChange.lastArgs = SC.A(arguments);
         observerResults.qaWillChange.counts++;
-
-        // use will change to add the range observer
-        queryArray.addRangeObserver(null, this, this.rangeObserver);
       },
       rangeObserver: function() {
         observerResults.rangeObserver.lastArgs = SC.A(arguments);
@@ -101,10 +98,13 @@ test("use query array as content item for a tree controller", function() {
     didChange: anObserver.qaDidChange
   });
 
+  // use will change to add the range observer
+  queryArray.addRangeObserver(null, anObserver, anObserver.rangeObserver);
+
   // ok - here's the issue - when I set 'referenceArray' on the query array,
   // all kinds of "stuff" will happen, content changes, observers firing,
-  //the works... but nothing happens to the arranged objects of tree controller
-  //... wtf?
+  // the works... but nothing happens to the arranged objects of tree controller
+  // ... wtf?
 
   SC.run(function() {
     dummyTree.set('content', SC.Object.create({
@@ -115,10 +115,9 @@ test("use query array as content item for a tree controller", function() {
   });
 
   ok(queryArray.get('length') == 5, "prereq - query array should have 5 elements");
-  ok(observerResults.qaDidChange.counts > 0
-     && observerResults.qaWillChange.counts > 0
-     && observerResults.rangeObserver.counts > 0,
-     'prereq - all observers fired');
+  ok(observerResults.qaDidChange.counts > 0, "prereq - didChange did fire");
+  ok(observerResults.qaWillChange.counts > 0, "prereq - willChange did fire");
+  ok(observerResults.rangeObserver.counts > 0, "prereq - rangeObservers did fire");
 
   ok(ao.get('length') == 5, "dummyTree should have 5 elements");
 });
