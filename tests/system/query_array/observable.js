@@ -227,3 +227,33 @@ test("QueryArrays can add range observers", function() {
 
   ok(rangeArgs.callCount == lastCallCount, "remove: the observer should NOT have been called again");
 });
+
+test("QueryArray range observers can be set up before a reference array",function() {
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: null,
+      query: q
+    });
+  });
+
+  var rangeArgs = { callCount: 0 };
+  var observer = {
+    _cb: function(array, objects, key, indices, context) {
+      rangeArgs.callCount++;
+      rangeArgs.lastArguments = SC.A(arguments);
+      rangeArgs.lastKey = key;
+      rangeArgs.indices = indices;
+    }
+  };
+
+  var theObserver = qa.addRangeObserver(null, observer, observer._cb);
+
+  SC.run(function() {
+    qa.set('referenceArray', a);
+  });
+
+  ok(rangeArgs.callCount > 0, "after setting a referenceArray the range observer is called");
+
+qz = qa;
+
+});

@@ -624,3 +624,127 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     };
   }
 });
+
+// TODO: why doesn't reopen work here?
+//DataStructures.Query.reopen({
+DataStructures.QueryArray = DataStructures.QueryArray.extend({
+/** make range observers transferable */
+  _qaRangeObs_inRestore: null,
+
+  addRangeObserver: function(/* @see sc_super */) {
+    var observer = sc_super();
+
+    if (!this._qaRangeObs_inRestore)
+      this._storeRangeObserverArgs(observer, SC.A(arguments));
+
+    return observer;
+  },
+
+  updateRangeObserver: function(/* @see sc_super */) {
+    this._storeRangeObserverArgs.apply(this, SC.A(arguments));
+    return sc_super();
+  },
+
+  removeRangeObserver: function(/* @see sc_super */) {
+    this._removeStoredRangeObserver(arguments[0]);
+    return sc_super();
+  },
+
+  // when the referenceArray changes, we must remove all range observers
+  // from the old referenceArray and add them to the new one
+  _rangeObserverMap: null,
+
+  _storeRangeObserverArgs: function(observer, args) {
+    if (!this._rangeObserverMap) this._rangeObserverMap = {};
+    args = SC.A(args);
+
+    if (!observer) {
+      observer = SC.Object.create({
+        observerStub: true,
+        message: 'reference array wasn\'t set up yet'
+      });
+    }
+
+    var hash = SC.hashFor(observer),
+      update = !!this._rangeObserverMap[hash];
+
+    if (update) {
+      var indexSet = args[0],
+        updateArgs = this._rangeObserverMap[hash].arguments;
+      updateArgs[0] = indexSet,
+      this._rangeObserverMap[hash].arguments = updateArgs;
+    } else {
+      this._rangeObserverMap[hash] = {
+        observer: observer,
+        arguments: args
+      };
+    }
+  },
+
+  _removeStoredRangeObserver: function(observer) {
+    if (!this._rangeObserverMap) this._rangeObserverMap = {};
+
+    var hash = SC.hashFor(observer);
+    delete this._rangeObserverMap[hash];
+  },
+
+  _teardownRangeObserversOnArray: function(array) {
+    if (!this._rangeObserverMap) this._rangeObserverMap = {};
+
+    for(var ro in this._rangeObserverMap) {
+      if (!this._rangeObserverMap.hasOwnProperty(ro)) continue;
+      var observer = this._rangeObserverMap[ro].observer;
+
+      if (!observer) {
+        SC.Logger.warn('bad range observer in query array... hmmm?');
+        delete this._rangeObserverMap[ro];
+        continue;
+      }
+
+      array.removeRangeObserver(observer);
+    }
+  },
+
+  _setupRangeObservers: function() {
+    if (!this._rangeObserverMap) this._rangeObserverMap = {};
+
+    var observers = [];
+
+    this._qaRangeObs_inRestore = true;
+    for(var ro in this._rangeObserverMap) {
+      if (!this._rangeObserverMap.hasOwnProperty(ro)) continue;
+      var args = this._rangeObserverMap[ro].arguments;
+
+      if (!args) {
+        SC.Logger.warn('bad range observer arguments in query array... hmmm?');
+        delete this._rangeObserverMap[ro];
+        continue;
+      }
+
+      observers.push(this.addRangeObserver.apply(this, args));
+    }
+    this._qaRangeObs_inRestore = false;
+
+    var changes = SC.IndexSet.create(0, this.get('referenceArray').get('length'));
+    observers.forEach(function(observer) {
+      observer.rangeDidChange(changes);
+    });
+  },
+
+  _qaRangeObs_refArr_cached: null,
+  _qaRangeObs_refArr_didChange: function() {
+    var ra = this.get('referenceArray');
+
+    if (SC.isEqual(this._qaRangeObs_refArr_cached, ra)) return;
+
+    if (this._qaRangeObs_refArr_cached) {
+      this._teardownRangeObserversOnArray(this._qaRangeObs_refArr_cached);
+      delete this._qaRangeObs_refArr_cached;
+    }
+
+    if (ra) {
+      this._setupRangeObservers();
+      this._qaRangeObs_refArr_cached = ra;
+    }
+  }.observes('referenceArray')
+});
