@@ -75,9 +75,14 @@ test("use query array as content item for a tree controller", function() {
     },
     rangeObserver: {
       counts: 0
+    },
+    enumObserver: {
+      counts: 0
     }
   },
     anObserver = SC.Object.create({
+      qa: queryArray,
+
       qaDidChange: function() {
         observerResults.qaDidChange.lastArgs = SC.A(arguments);
         observerResults.qaDidChange.counts++;
@@ -89,7 +94,11 @@ test("use query array as content item for a tree controller", function() {
       rangeObserver: function() {
         observerResults.rangeObserver.lastArgs = SC.A(arguments);
         observerResults.rangeObserver.counts++;
-      }
+      },
+      _enumerableObserver: function() {
+        observerResults.enumObserver.lastArgs = SC.A(arguments);
+        observerResults.enumObserver.counts++;
+      }.observes('.qa.[]')
     });
 
   queryArray.addArrayObservers({
@@ -108,7 +117,8 @@ test("use query array as content item for a tree controller", function() {
 
   SC.run(function() {
     dummyTree.set('content', SC.Object.create({
-      treeItemChildren: queryArray
+      treeItemChildren: queryArray,
+      treeItemIsExpanded: YES
     }));
 
     queryArray.set('referenceArray', a);
@@ -118,7 +128,13 @@ test("use query array as content item for a tree controller", function() {
   ok(observerResults.qaDidChange.counts > 0, "prereq - didChange did fire");
   ok(observerResults.qaWillChange.counts > 0, "prereq - willChange did fire");
   ok(observerResults.rangeObserver.counts > 0, "prereq - rangeObservers did fire");
+  ok(observerResults.enumObserver.counts > 0, "prereq - enumObservers did fire");
 
+  ao = dummyTree.get('arrangedObjects');
   ok(ao.get('length') == 5, "dummyTree should have 5 elements");
+
+  a.pushObject(SC.Object.create({value: 6}));
+
+  ok(ao.get('length') == 6, "dummyTree should have 6 elements after pushing new matching object onto query array");
 });
 
