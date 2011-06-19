@@ -151,6 +151,13 @@ test("QueryArrays behavew with addArrayObservers/removeArrayObservers", function
 
 });
 
+test("adding range observers before setting referenceArray is ok... but returns null", function() {
+  qa = DataStructures.QueryArray.create();
+  var foo = SC.Object.create({bar: function() {}});
+  ok(SC.none(qa.addRangeObserver(null, foo, foo.bar)), 'adding a range observer before the reference array is set doesn\'t crash');
+});
+
+
 test("QueryArrays can add range observers", function() {
   var c = 0;
 

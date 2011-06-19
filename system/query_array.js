@@ -104,6 +104,8 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     var ref = this.get('referenceArray'),
       args = SC.A(arguments);
 
+    if (!ref) return null;
+
     if (indices && indices.isIndexSet) {
       args[0] = this._translateIndexSet(indices);
     }
@@ -175,6 +177,8 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     var ref = this.get('referenceArray'),
       args = SC.A(arguments);
 
+    if (!ref) return null;
+
     if (indices && indices.isIndexSet) {
       args[1] = this._translateIndexSet(indices);
     }
@@ -185,6 +189,9 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   removeRangeObserver: function(rangeObserver) {
     var ref = this.get('referenceArray'),
       args = SC.A(arguments);
+
+    if (!ref) return null;
+
     return ref.removeRangeObserver.apply(ref, args);
   },
 
