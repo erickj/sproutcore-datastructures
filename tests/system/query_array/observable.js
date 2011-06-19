@@ -260,7 +260,4 @@ test("QueryArray range observers can be set up before a reference array",functio
   });
 
   ok(rangeArgs.callCount > 0, "after setting a referenceArray the range observer is called");
-
-qz = qa;
-
 });
