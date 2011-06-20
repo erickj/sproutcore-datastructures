@@ -29,7 +29,7 @@ DataStructures.SubstringHash = DataStructures.BasicIndex.extend({
   },
 
   /**
-   * construction time: O(n!) where n = key.length
+   * construction time see +substrings+ below
    */
   index: function(key, value) {
     var h = this._substrs,
