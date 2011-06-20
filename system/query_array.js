@@ -5,6 +5,60 @@
 // ==========================================================================
 require('ext/delegate_support');
 
+/**
+ * Overview:
+ * The QueryArray is designed to be a generic version of the
+ * SC.RecordArray, with no coupling to the SC.Store, and a loose
+ * reliance on the SC.Query.  The query array is a filtration of
+ * another array, the reference array.  The query array looks like any
+ * other native array object, has a 0 based index and is fully
+ * observable via enumerable content, array observers, and range
+ * observers.  What I mean by has a 0 based index is that if I have
+ * the following reference array, ra,:
+ *
+ * [{v: 1},{v: 2},{v: 3},{v: 4},{v: 5},{v: 6},{v: 7},{v: 8}]
+ *
+ * With query, q:
+ *
+ * "v >= 2 AND v < 5 OR v >= 7"
+ *
+ * The resulting query array, qa, would resemble:
+ *
+ * [{v: 2},{v: 3},{v: 4},{v: 7},{v:8}]
+ *
+ * where {v: 2} is at index 0, and {v: 8} at index 4.  This implies that:
+ *
+ * qa.objectAt(0) === ra.objectAt(1)
+ *
+ * further, it has implications in terms of observing.  For instance,
+ * if the following occurred:
+ *
+ * ra.pushObject({v: 2.5})
+ *
+ * Any range observer bound to ra would be notified of a change at
+ * index 8, while observers of qa would be notified of a change at
+ * index 5.
+ *
+ * Reference Array:
+ * This is the source array for the QueryArray.  The QueryArray will
+ * contain a subset of items from the ReferenceArray.  Changes to the
+ * ReferenceArray involving items that match the query condition will
+ * trigger observable changes on the query array.
+ *
+ * Query:
+ * The original intention of the query object is to be used with the
+ * SC.Query class, however any object that responds to +parse+ and
+ * +contains+ will do.  +parse+ may return void, while +contains+ must
+ * return a boolean.  See SC.Query for info on their intentions.
+ * Ordering is NOT currently supported.
+ *
+ * QueryArray is Immutable:
+ * The query array is immutable from the client perspective, any
+ * changes made to the contents of the query array will NOT be
+ * propogated back to the reference array.  The QueryArray
+ * implementation of +replace+ throws an error.  Only the reference
+ * array should be modified.
+ */
 DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   MAXTIME: 100,
 
@@ -58,14 +112,17 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   indexOf: function(obj,startAt) {
     startAt = this._mapPublicToPrivateIndex(startAt);
     var i = this._indexSet.indexOf(obj,startAt);
-    return this._mapPrivateToPublicIndex(i);
+    return i >= 0 ? this._mapPrivateToPublicIndex(i) : i;
   },
 
   lastIndexOf: function(obj,startAt) {
     startAt = this._mapPublicToPrivateIndex(startAt);
     var i = this._indexSet.lastIndexOf(obj,startAt);
-    return this._mapPrivateToPublicIndex(i);
+    return i >= 0 ? this._mapPrivateToPublicIndex(i) : i;
   },
+
+  // TODO - override add/removeArrayObserver to translate index spaces
+  // into the willChange/didChange callbacks into the referenceArray
 
   /**
    * Array.addRangeObserver explicitly leaves out deep observing of
@@ -91,14 +148,15 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * whole deep observation problem altogether and make the caller
    * explicitly set up observers externally based on insertions and
    * removals
-   */
-
-  // TODO - override add/removeArrayObserver to curry mapped
-  // indices into the willChange/didChange callbacks into the referenceArray
-
-  /**
-   * proxy all range observer calls into the reference array after
-   * mapping the indices appropriately
+   *
+   * The primary role of add/update/removeRangeObserver as implemented
+   * here is to translate between public/private index spaces so that
+   * range observers are actually registered to the reference array
+   * (private index space), but return index (start/length) info in
+   * terms of the query array (public index space).
+   *
+   * @see DataStructures.QueryArray.RangeObserverRebuild
+   *   for more range observer functionality
    */
   addRangeObserver: function(indices, target, method, context) {
     var ref = this.get('referenceArray'),
@@ -111,18 +169,18 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     }
 
     // we need to wrap the callback in a function that will guard
-    // against changes to indices that aren't in our query array.
-    // in the case that _indcies_ is null (meaning the caller wants
-    // to watch the whole array) we have to pass that value into
-    // the referenceArray as null.  we need to do this so future
-    // additions to this queryArray (via the referenceArray) will
-    // be monitored as well.  this has the side effect that any change
-    // to the referenceArray, even those that are filtered out of
-    // this query array will be sent to the range observer callback.
-    // this wrapper intercepts the callback and checks that the
-    // indices sent to it are in the query array first.  this wrapped
-    // method also translates the indices from the private index space
-    // into the public index space
+    // against changes to indices that aren't in our query array.  in
+    // the case that _indices_ is null (meaning the caller wants to
+    // watch the whole array) we have to pass that value into the
+    // referenceArray as null.  we need to do this so future additions
+    // to this queryArray (via the referenceArray) will be monitored
+    // as well.  this has the side effect that any change to the
+    // referenceArray, even those that are filtered out of this query
+    // array will be sent to the range observer callback.  this
+    // wrapper intercepts the callback and checks that the indices
+    // sent to it are in the query array first.  this wrapped method
+    // also translates the indices from the private index space into
+    // the public index space
     method = function _qaAnonRangeObserverCbBuilder(target, method, that) {
       // the function call guards the closure scope
       if (SC.typeOf(method) == SC.T_STRING) {
@@ -139,7 +197,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
        * @param indexSet
        * @param context
        */
-      return function _qaAnonProxiedRangeObserverCb() {
+      return function _qaAnonRangeObsrvrIndexSetTranslationCb() {
         var args = SC.A(arguments),
           refIndexSet = args[3],
           localIndexSet = that._indexSet;
@@ -149,10 +207,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
           mappedIndexSet = SC.IndexSet.create();
 
         // the localIndexSet and refIndexSet are in the same
-        // vector space so indexes can be compared directly.
+        // index space so indices can be compared directly.
         // loop through _localIndexSet_ since it MUST be <=
         // _refIndexSet_
-        localIndexSet.forEachIn(first, len, function(idx) {
+        localIndexSet.forEachIn(first, len, function _qaAnonLocalIdxSetIterator(idx) {
           if (refIndexSet.contains(idx)) {
             mappedIndexSet.add(that._mapPrivateToPublicIndex(idx));
           }
@@ -195,12 +253,28 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     return ref.removeRangeObserver.apply(ref, args);
   },
 
+  // TODO: this could be sped up by iterating over ranges rather than
+  // indices, or by using the IndexSet+replace+ function, but that can
+  // be done later
+
   /**
-   * TODO: this could be sped up by iterating over ranges rather than
-   * indices, or by using the IndexSet+replace+ function, but that can
-   * be done later
-   */
-  /**
+   * @private
+   * Index spaces
+   *
+   * The job of the query array is to filter the contents of an array
+   * like object (the reference array) via the _conditions_ of an
+   * SC.Query into an object with an array inferface (the query
+   * array).  The indices of the reference array should be considered
+   * private, these indices will be called the private index space.
+   * The clients of the query array should only concern themselves
+   * with the 0 based indexing of the query array.  This will be
+   * called the public index space. All access to the query array
+   * through +objectAt+ and indices described in registered observers
+   * must all be in the public index space in order to provide easy
+   * access to the client.  +_translateIndexSet+ will take an
+   * SC.IndexSet as its first parameter and return the matching
+   * public/private index set for that argument.
+   *
    * @param idxSet an IndexSet
    * @param publicToPrivate - bool default true
    * @param bind - bool default true
@@ -400,7 +474,11 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    *
    * @param start
    * @param changed
-   * @param isRemoval - we can't always use +_calculateOperation+ to determine if the object should be removed or not since we're using removals from +refArrElems_willChange+. the objects will still be in the reference array.  use isRemoval to force calculating the operation as a removal
+   * @param isRemoval - we can't always use +_calculateOperation+ to
+   * determine if the object should be removed or not since we're
+   * using removals from +refArrElems_willChange+. the objects will
+   * still be in the reference array.  use isRemoval to force
+   * calculating the operation as a removal
    */
   _flushChanges: function(start,changed,isRemoval) {
     // we need to wait to calculate our flush changes until after
@@ -465,6 +543,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * @param operations - array of objects that respond to +_doOperation+
    * @param _resuming - bool - internal use only
    */
+  // TODO: setTimeout and the flushQueue are currently semi broken... fix this
   _doModifications: function(addSets, removeSets, operations /*, _resuming */) {
     var startTime = (new Date()).getTime(),
       modificationTimeExceeded = false,
@@ -632,10 +711,25 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   }
 });
 
-// TODO: why doesn't reopen work here?
-//DataStructures.Query.reopen({
-DataStructures.QueryArray = DataStructures.QueryArray.extend({
-/** make range observers transferable */
+/**
+ * This object is used to extend DataStructures.QueryArray below.
+ *
+ * In the query array - range observers are actually sent down to
+ * observe on the referenceArray. Since the referenceArray could be
+ * swapped out at any give time, or possibly not exist at the time the
+ * range observers are set up we need a way to setup all the range
+ * observers everytime referenceArray gets set. I wanted this code to
+ * be a bit modular and not pollute the existing implementation of
+ * add/update/removeRangeObserver that exists in QueryArray proper
+ * (above).  That code is responsible for translating between IndexSet
+ * spaces (public/private index space).  This code is for caching what
+ * is necessary to rebuild and remove array observers when the
+ * referenceArrayChanges.  This code gets mixed over those functions
+ * and wrap calls to them with sc_super.  It makes the whole
+ * implementation that much cleaner.  It does add an extra observer on
+ * _referenceArray_ but I can live with that.
+ */
+DataStructures.QueryArray.RangeObserverRebuild = {
   _qaRangeObs_inRestore: null,
 
   addRangeObserver: function(/* @see sc_super */) {
@@ -695,6 +789,9 @@ DataStructures.QueryArray = DataStructures.QueryArray.extend({
     delete this._rangeObserverMap[hash];
   },
 
+  /**
+   * called when a referenceArray gets unset
+   */
   _teardownRangeObserversOnArray: function(array) {
     if (!this._rangeObserverMap) this._rangeObserverMap = {};
 
@@ -708,11 +805,18 @@ DataStructures.QueryArray = DataStructures.QueryArray.extend({
         continue;
       }
 
+      // don't call +removeRangeObserver+ on this!!!
+      // that would remove the observer from our _rangeObserverMap.
+      // we only want to unregister the observer from the old
+      // reference array
       array.removeRangeObserver(observer);
     }
   },
 
-  _setupRangeObservers: function() {
+  /**
+   * called when a new referenceArray gets set
+   */
+  _setupRangeObserversOnThis: function() {
     if (!this._rangeObserverMap) this._rangeObserverMap = {};
 
     var observers = [];
@@ -728,6 +832,10 @@ DataStructures.QueryArray = DataStructures.QueryArray.extend({
         continue;
       }
 
+      // as opposed to the call to +_teardownRangeObserversOnArray+
+      // this function needs to run the observers through the
+      // QueryArray path for adding range observers so that the
+      // callbacks can be wrapped by the index set translators
       observers.push(this.addRangeObserver.apply(this, args));
     }
     this._qaRangeObs_inRestore = false;
@@ -750,8 +858,11 @@ DataStructures.QueryArray = DataStructures.QueryArray.extend({
     }
 
     if (ra) {
-      this._setupRangeObservers();
+      this._setupRangeObserversOnThis();
       this._qaRangeObs_refArr_cached = ra;
     }
   }.observes('referenceArray')
-});
+};
+
+// TODO: why doesn't mixing into the prototype or using +DataStructures.QueryArray.reopen+ work?
+DataStructures.QueryArray = DataStructures.QueryArray.extend(DataStructures.QueryArray.RangeObserverRebuild);
