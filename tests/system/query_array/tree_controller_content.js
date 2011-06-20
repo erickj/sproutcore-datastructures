@@ -110,11 +110,6 @@ test("use query array as content item for a tree controller", function() {
   // use will change to add the range observer
   queryArray.addRangeObserver(null, anObserver, anObserver.rangeObserver);
 
-  // ok - here's the issue - when I set 'referenceArray' on the query array,
-  // all kinds of "stuff" will happen, content changes, observers firing,
-  // the works... but nothing happens to the arranged objects of tree controller
-  // ... wtf?
-
   SC.run(function() {
     dummyTree.set('content', SC.Object.create({
       treeItemChildren: queryArray,
