@@ -91,7 +91,7 @@ DataStructures.SubstringHash = DataStructures.BasicIndex.extend({
 });
 
 /**
- * this algorithm has runtime complexity of O(n!)
+ * this algorithm has runtime complexity of O(n*(n+1)/2)
  * not so good... make sure you use min and max to cap it
  *
  * TODO: implement a suffix trie
