@@ -1,5 +1,5 @@
 
-var queryArray, qry, a;
+var queryArray, qry, a, anObserver, observerResults;
 module("DataStructures Query Array", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
@@ -20,6 +20,9 @@ module("DataStructures Query Array", {
       query: qry
     });
 
+    anObserver = addArrayObservers(queryArray);
+    observerResults = anObserver.observerResults;
+
     SC.run(function() {
       SC.Logger.log('setup runloop execute');
     });
@@ -33,6 +36,55 @@ module("DataStructures Query Array", {
     SC.Logger.groupEnd();
   }
 });
+
+function addArrayObservers(queryArray) {
+  // setup an observer to prove the observers on query array are firing
+  var anObserver = SC.Object.create({
+    observerResults: {
+      qaDidChange: {
+        counts: 0
+      },
+      qaWillChange: {
+        counts: 0
+      },
+      rangeObserver: {
+        counts: 0
+      },
+      enumObserver: {
+        counts: 0
+      }
+    },
+    qa: queryArray,
+
+    qaDidChange: function() {
+      this.observerResults.qaDidChange.lastArgs = SC.A(arguments);
+      this.observerResults.qaDidChange.counts++;
+    },
+    qaWillChange: function() {
+      this.observerResults.qaWillChange.lastArgs = SC.A(arguments);
+      this.observerResults.qaWillChange.counts++;
+    },
+    rangeObserver: function() {
+      this.observerResults.rangeObserver.lastArgs = SC.A(arguments);
+      this.observerResults.rangeObserver.counts++;
+    },
+    _enumerableObserver: function() {
+      this.observerResults.enumObserver.lastArgs = SC.A(arguments);
+      this.observerResults.enumObserver.counts++;
+    }.observes('.qa.[]')
+  });
+
+  queryArray.addArrayObservers({
+    target: anObserver,
+    willChange: anObserver.qaWillChange,
+    didChange: anObserver.qaDidChange
+  });
+
+  // use will change to add the range observer
+  queryArray.addRangeObserver(null, anObserver, anObserver.rangeObserver);
+
+  return anObserver;
+}
 
 test("use query array as content item for a tree controller", function() {
   ok(queryArray.isQueryArray, 'prereq - queryArray should be a queryArray');
@@ -65,60 +117,16 @@ test("use query array as content item for a tree controller", function() {
 
   equals(ao.get('length'), items.length, "prereq - dummyTree with plain old array updates with content");
 
-  // setup an observer to prove the observers on query array are firing
-  var observerResults = {
-    qaDidChange: {
-      counts: 0
-    },
-    qaWillChange: {
-      counts: 0
-    },
-    rangeObserver: {
-      counts: 0
-    },
-    enumObserver: {
-      counts: 0
-    }
-  },
-    anObserver = SC.Object.create({
-      qa: queryArray,
-
-      qaDidChange: function() {
-        observerResults.qaDidChange.lastArgs = SC.A(arguments);
-        observerResults.qaDidChange.counts++;
-      },
-      qaWillChange: function() {
-        observerResults.qaWillChange.lastArgs = SC.A(arguments);
-        observerResults.qaWillChange.counts++;
-      },
-      rangeObserver: function() {
-        observerResults.rangeObserver.lastArgs = SC.A(arguments);
-        observerResults.rangeObserver.counts++;
-      },
-      _enumerableObserver: function() {
-        observerResults.enumObserver.lastArgs = SC.A(arguments);
-        observerResults.enumObserver.counts++;
-      }.observes('.qa.[]')
-    });
-
-  queryArray.addArrayObservers({
-    target: anObserver,
-    willChange: anObserver.qaWillChange,
-    didChange: anObserver.qaDidChange
-  });
-
-  // use will change to add the range observer
-  queryArray.addRangeObserver(null, anObserver, anObserver.rangeObserver);
-
   // reset dummyTree
   dummyTree = SC.TreeController.create({
-    content: null
+    content: null,
+    treeItemChildrenKey: 'items'
   });
 
   SC.run(function() {
     dummyTree.set('content', SC.Object.create({
-      treeItemChildren: queryArray,
-      treeItemIsExpanded: YES
+      treeItemIsExpanded: YES,
+      items: queryArray
     }));
 
     queryArray.set('referenceArray', a);
