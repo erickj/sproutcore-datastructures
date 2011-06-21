@@ -145,3 +145,28 @@ test("use query array as content item for a tree controller", function() {
 
   ok(ao.get('length') == 6, "dummyTree should have 6 elements after pushing new matching object onto query array");
 });
+
+test("TreeController with QueryArray with ReferenceArray => ArrayController", function() {
+  a =SC.ArrayController.create({content:[]});
+
+  var dummyTree = SC.TreeController.create({
+    content: SC.Object.create({
+      treeItemIsExpanded: YES,
+      treeItemChildren: queryArray
+    })
+  });
+
+  SC.run(function() {
+    queryArray.set('referenceArray',a);
+
+    [1,2,3,4].forEach(function(i) {
+                        a.pushObject(SC.Object.create({value: i + 5}));
+                      });
+  });
+
+  equals(dummyTree.getPath('content.treeItemChildren.length'), 4, 'prereq - content.treeItemChildren should have 4 elements');
+
+  var ao = dummyTree.get('arrangedObjects');
+  equals(ao.get('length'),4, 'ao should have 4 values');
+});
+
