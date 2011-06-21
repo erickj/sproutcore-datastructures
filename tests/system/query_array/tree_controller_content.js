@@ -110,6 +110,11 @@ test("use query array as content item for a tree controller", function() {
   // use will change to add the range observer
   queryArray.addRangeObserver(null, anObserver, anObserver.rangeObserver);
 
+  // reset dummyTree
+  dummyTree = SC.TreeController.create({
+    content: null
+  });
+
   SC.run(function() {
     dummyTree.set('content', SC.Object.create({
       treeItemChildren: queryArray,
@@ -132,4 +137,3 @@ test("use query array as content item for a tree controller", function() {
 
   ok(ao.get('length') == 6, "dummyTree should have 6 elements after pushing new matching object onto query array");
 });
-

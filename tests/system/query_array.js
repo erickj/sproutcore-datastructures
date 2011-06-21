@@ -247,3 +247,24 @@ test("large modifications will get chunked up on timeout", function() {
 
 //  equals(qa.get('length'), 0, 'prereq - there should less objects in qa');
 });
+
+test("query array can be a referenceArray", function() {
+  var qaCannibal;
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: a,
+      query: q
+    });
+
+    qaCannibal = DataStructures.QueryArray.create({
+      referenceArray: qa,
+      query: SC.Query.create({
+        conditions: 'value = 6 OR value = 7'
+      })
+    });
+  });
+
+  equals(qaCannibal.get('length'), 2, 'qaCannibal should have 2 values in it');
+  equals(qaCannibal.objectAt(0).get('value'), 6, 'first object should be 6');
+  equals(qaCannibal.objectAt(1).get('value'), 7, 'first object should be 6');
+});
