@@ -633,9 +633,11 @@ test("allow modifying composite DAGs via altering compositeParents prop", functi
   delorian.set('characters',['Marty McFly',
                              'Doc Brown']);
 
+  // test observing compositeParents.[]
   delorian.get('compositeParents').pushObject(_1985);
   equals(_1985.get('characters').length, 2, '1985 has 2 characters');
 
+  // test observing compositeParents
   delorian.set('compositeParents', [_1985, _1955]);
   equals(_1985.get('characters').length, 2, '1985 has 2 characters');
   equals(_1955.get('characters').length, 2, '1955 has 2 characters');
