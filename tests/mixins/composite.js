@@ -331,19 +331,35 @@ test("compositeList is observable", function() {
 
 });
 
-// TODO: remove this b.s.
-test("DataStructures.Composite can add noncomposites on the fly", function() {
+test("DataStructures.Composite can NOT add noncomposites", function() {
   var veyron = Car.create({
     weight: 1000,
     horsePower: 500
   });
 
-  veyron.addCompositeChild(SC.Object.create({
-    weight: 100,
-    horsePower: 50
-  }));
+  var catchCount = 0;
 
-  equals(veyron.getWeight(), 1100, 'weight should include anonymous object weight');
+  try {
+    veyron.addCompositeChild(SC.Object.create({
+      weight: 100,
+      horsePower: 50
+    }));
+  } catch(e) {
+    catchCount++;
+  }
+
+  ok(catchCount == 1, 'an error should have been thrown for adding a non composite child');
+
+  try {
+    veyron.addCompositeParent(SC.Object.create({
+      weight: 100,
+      horsePower: 50
+    }));
+  } catch(e) {
+    catchCount++;
+  }
+
+  ok(catchCount == 2, 'an error should have been thrown for adding a non composite parent');
 });
 
 /**

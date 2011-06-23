@@ -213,13 +213,8 @@ DataStructures.Composite = {
     // TODO: see the note above about avoiding loops
     if (this.compositeHasParent(c)) return null;
 
-    // TODO: get rid of this functionality - EJ & TCE discuessed 6/13/11
     if (!c.isCompositePiece) {
-      // TODO: this doesn't really work - destroyMixin doesn't get added
-      // as a concatenatedProperty - thus doesn't get called on object destroy
-      // when the Composite is lazily mixed in
-      SC.mixin.apply(c, [DataStructures.Composite]);
-      DataStructures.Composite.initMixin.apply(c,[]);
+      throw new Error("only composite pieces may be added as a child - try mixing DataStructures.Composite into your child object first");
     }
 
     if (this.DEBUG_COMPOSITE)
@@ -276,8 +271,7 @@ DataStructures.Composite = {
     if (this.compositeHasChild(p)) return null;
 
     if (!p.isCompositePiece) {
-      SC.mixin.apply(p, [DataStructures.Composite]);
-      DataStructures.Composite.initMixin.apply(p,[]);
+      throw new Error("only composite pieces may be added as a parent - try mixing DataStructures.Composite into your parent object first");
     }
 
     p.addCompositeChild(this);
