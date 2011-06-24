@@ -76,6 +76,9 @@ DataStructures.Composite = {
     this.removeObserver('compositeChildren.[]',
                         '_cmpst_unbound_compositeChildrenDidChange');
 
+    this._cmpst_destroyCompositeProperties();
+    this._cmpst_destroyCompositeParents();
+
     var debug = this.DEBUG_COMPOSITE;
 
     // remove all dynamic computed properties and return the values
@@ -294,6 +297,14 @@ DataStructures.Composite = {
     this._cmpst_unbound_compositeParentsDidChange();
   },
 
+  /* desroy */
+  _cmpst_destroyCompositeParents: function() {
+    this.removeObserver('compositeParents.[]',
+                        '_cmpst_unbound_compositeParentsDidChange');
+    this.removeObserver('compositeParents',
+                        '_cmpst_unbound_compositeParentsDidChange');
+  },
+
   /* private */
   _cmpst_initCompositeProperties: function() {
     if (!this.compositeProperties) {
@@ -315,6 +326,14 @@ DataStructures.Composite = {
 
     // optimized to avoid using notifyPropertyChange for compositeProperties
     this._cmpst_updateCompositePropertyMonitors();
+  },
+
+  /* private */
+  _cmpst_destroyCompositeProperties: function() {
+    this.removeObserver('compositeProperties.[]',
+                        '_cmpst_unbound_compositePropertiesDidChange');
+    this.removeObserver('compositeProperties',
+                        '_cmpst_unbound_compositePropertiesDidChange');
   },
 
   /* private */
