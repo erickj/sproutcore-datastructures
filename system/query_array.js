@@ -685,7 +685,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     qry = qry || this.get('query');
     idxSet = idxSet || this._indexSet;
 
-    var queryContained = qry.contains(obj),
+    var queryContained = qry.contains(obj,this.get('queryParameters')),
       contained = this.contains(idx),
       isAddition = (!contained && queryContained);
 

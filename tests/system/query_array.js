@@ -268,3 +268,25 @@ test("query array can be a referenceArray", function() {
   equals(qaCannibal.objectAt(0).get('value'), 6, 'first object should be 6');
   equals(qaCannibal.objectAt(1).get('value'), 7, 'first object should be 6');
 });
+
+test("query array can provide query parameters", function() {
+  var qaCannibal;
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: [
+        [0,1],[2,9],[0,12],[0,3,4],[5,6]
+      ].map(function (arr) { return SC.Object.create({props: arr}); }),
+      query: SC.Query.create({
+        conditions: '(props MAP {mapAlphabet}) CONTAINS "a"'
+      }),
+      queryParameters: {
+        mapAlphabet: function(i) {
+          var alpha = "abcdefghijklmnopqrstuvwxyz";
+          return alpha[i % alpha.length];
+        }
+      }
+    });
+  });
+
+  ok(qa.get('length') === 3, 'the query reference array values should get mapped on comparison');
+});
