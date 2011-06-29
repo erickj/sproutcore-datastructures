@@ -30,9 +30,7 @@ DataStructures.BasicIndex = SC.Object.extend({
     if (!this.table[key]) {
       this.table[key] = [];
     }
-//    if (this.table[key].indexOf(val) < 0) {
     this.table[key].push(val);
-//    }
   },
 
   lookup: function(key) {
