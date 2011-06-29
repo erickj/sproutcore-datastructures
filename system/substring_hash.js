@@ -41,6 +41,7 @@ DataStructures.SubstringHash = DataStructures.BasicIndex.extend({
       if (!h[sub]) h[sub] = [];
       h[sub].push(idx);
     },this);
+    this.notifyPropertyChange('keyValues');
   },
 
   /**
@@ -71,6 +72,7 @@ DataStructures.SubstringHash = DataStructures.BasicIndex.extend({
         h[sub].removeAt(j);
       }
     },this);
+    this.notifyPropertyChange('keyValues');
   },
 
   /* private */

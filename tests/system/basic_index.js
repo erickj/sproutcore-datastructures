@@ -100,3 +100,20 @@ test("basic indexes can remove indexed values", function() {
   b.remove("foo","bar");
   ok(b.isIndexed("foo","baz"), "foo should still be indexed to baz");
 });
+
+test("basic index does notify of change to keyValues",function() {
+  var count = 0;
+
+  b._observer = function() {
+    count++;
+  };
+
+  b.addObserver('keyValues', b, b._observer);
+  b.index("foo", "bar");
+
+  equals(count, 1, "_observer should be fired +index+");
+
+  b.remove("foo", "bar");
+
+  equals(count, 2, "_observer should be fired on +remove+");
+});

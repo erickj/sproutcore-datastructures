@@ -9,6 +9,8 @@
 DataStructures.BasicIndex = SC.Object.extend({
   isIndexer: YES,
 
+  keyValues: null, // fake property - use for change notifications
+
   table: null,
 
   init: function() {
@@ -31,6 +33,7 @@ DataStructures.BasicIndex = SC.Object.extend({
       this.table[key] = [];
     }
     this.table[key].push(val);
+    this.notifyPropertyChange('keyValues');
   },
 
   lookup: function(key) {
@@ -49,6 +52,7 @@ DataStructures.BasicIndex = SC.Object.extend({
     if (i >= 0) {
       this.table[key] = this.table[key].removeAt(i).compact();
     }
+    this.notifyPropertyChange('keyValues');
   },
 
   /* private */

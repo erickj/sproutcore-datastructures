@@ -78,3 +78,20 @@ test("substring hash can index and lookup values", function() {
 
   ok(h.lookup('David').indexOf(larry) >= 0, 'but larry should be accessible via "David"');
 });
+
+test("substring hash does notify of change to keyValues",function() {
+  var count = 0;
+
+  h._observer = function() {
+    count++;
+  };
+
+  h.addObserver('keyValues', h, h._observer);
+  h.index("foo", "bar");
+
+  equals(count, 1, "_observer should be fired +index+");
+
+  h.remove("foo", "bar");
+
+  equals(count, 2, "_observer should be fired on +remove+");
+});
