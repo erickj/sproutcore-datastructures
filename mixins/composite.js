@@ -61,12 +61,23 @@ DataStructures.Composite = {
    * the current object from the composite both up and down the DAG
    */
   destroyMixin: function() {
-    this.get('compositeParents').forEach(function(p) {
+    // N.B. 6/30/11:
+    // Without using +copy+ on these arrays, _parents_ gets assigned
+    // as a reference to _this.get('compositeParents')_ .  When
+    // +forEach+ iterates over the array, if it is modified, then that
+    // modification affects the current iteration.  need to grab a
+    // static copy of this array now, so modifications in
+    // +removeCompositeChild+ don't break iteration
+    //
+    // @see tests/mixins/composite/multi_parent_destroy_bug.js
+    var parents = this.get('compositeParents').copy();
+    parents.forEach(function(p) {
       if (!arguments[0]) return;
       p.removeCompositeChild(this);
     },this);
 
-    this.get('compositeChildren').forEach(function(c) {
+    var children = this.get('compositeChildren').copy();
+    children.forEach(function(c) {
       if (!arguments[0]) return;
       this.removeCompositeChild(c);
     },this);
@@ -238,6 +249,10 @@ DataStructures.Composite = {
   },
 
   removeCompositeChild: function(c) {
+    if (!c.isCompositePiece) {
+      throw new Error("only composite pieces may be removed - try mixing DataStructures.Composite into your child object first");
+    }
+
     if (!this.compositeHasChild(c)) return null;
 
     var h = SC.hashFor(c),

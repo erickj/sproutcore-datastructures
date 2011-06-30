@@ -362,6 +362,21 @@ test("DataStructures.Composite can NOT add noncomposites", function() {
   ok(catchCount == 2, 'an error should have been thrown for adding a non composite parent');
 });
 
+test("DataStructures.Composite can NOT remove noncomposites", function() {
+  var veyron = Car.create(),
+    obj = {};
+
+  var catchCount = 0;
+
+  try {
+    veyron.removeCompositeChild(obj);
+  } catch(e) {
+    catchCount++;
+  }
+
+  equals(catchCount,1,'an error should have been thrown for removing a noncomposite');
+});
+
 /**
  * focus on hooking up compositeParent automatically (no need to call +addCompositeChild+)
  */
