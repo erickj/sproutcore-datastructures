@@ -201,7 +201,7 @@ DataStructures.Composite = {
 
   compositeCompare: null,
   compositeSortChildren: function() {
-    var children = this.compositeChildren,
+    var children = this.compositeChildren.compact(),
       that = this,
       boundCompareFn = this.compositeCompare && function() {
         return that.compositeCompare.apply(that, arguments);
