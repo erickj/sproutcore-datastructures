@@ -408,29 +408,32 @@ test("property compositeParent should auto add object as parent", function() {
  * this is very similar to test 2 in implementation but focuses on KVO aspects
  */
 test("compositeProperties should be observable and propogate changes up the composite", function() {
-   var forest = SC.Object.create(DataStructures.Composite, {
-                              name: 'forest',
-                              didChangeCount: 0,
-                              allTheLeaves: function() {
-                                return this.doCompositeOperation('get','leaves')
-                                  .reduce(function(prev,cur) {
-                                            return prev + cur;
-                                          });
-                              },
-                              _leavesDidChange: function() {
-                                var val = this.allTheLeaves();
-                                this._unboundValue = val;
-                              }.observes('leaves')
-                            }),
-    Tree = SC.Object.extend(DataStructures.Composite, {
-                              compositeProperties: ['leaves'],
-                              compositeParents: forest,
-                              leaves: null,
+  var forest, Tree;
 
-                              branches: function() {
-                                return 1;
-                              }.property().compositeProperty()
-                            });
+  forest = SC.Object.create(DataStructures.Composite, {
+    name: 'forest',
+    didChangeCount: 0,
+    allTheLeaves: function() {
+      return this.doCompositeOperation('get','leaves')
+        .reduce(function(prev,cur) {
+          return prev + cur;
+        });
+    },
+    _leavesDidChange: function() {
+      var val = this.allTheLeaves();
+      this._unboundValue = val;
+    }.observes('leaves')
+  });
+
+  Tree = SC.Object.extend(DataStructures.Composite, {
+    compositeProperties: ['leaves', 'branches'],
+    compositeParents: forest,
+    leaves: null,
+
+    branches: function() {
+      return 1;
+    }.property()
+  });
 
   SC.RunLoop.begin();
   SC.Logger.log('creating tree 1');
@@ -526,6 +529,7 @@ test("compositeProperties should be observable and propogate changes up the comp
 
 test("dynamic composite properties aren't totally fucking insane", function() {
   var UPSTruck = SC.Object.extend(DataStructures.Composite, {
+    compositeProperties: ['cargo'],
     _assortedItems: null,
 
     // use cargo to test computed property setters
@@ -540,7 +544,7 @@ test("dynamic composite properties aren't totally fucking insane", function() {
 
       var ret = SC.A(this.get('boxedItems')).concat(this._assortedItems);
       return ret;
-    }.property('boxedItems').cacheable().compositeProperty()
+    }.property('boxedItems').cacheable()
   });
 
   var BagOfStuff = SC.Object.extend(DataStructures.Composite, {

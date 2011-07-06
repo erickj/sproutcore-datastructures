@@ -691,18 +691,3 @@ DataStructures.Composite = {
     return this._cmpst_propertyCache[k];
   }
 };
-
-/**
- * Augment Function.prototype
- */
-SC.mixin(Function.prototype, {
-  /**
-   * use this to mark computed properties that should be
-   * included in the composite, this is equivalent to listing
-   * something in the 'computedProperties' array
-   */
-  compositeProperty: function() {
-    this.isCompositeProperty = true;
-    return this;
-  }
-});
