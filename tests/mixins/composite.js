@@ -562,7 +562,7 @@ test("dynamic composite properties aren't totally fucking insane", function() {
                             'acme anvils',
                             'exploding cigars']);
 
-  equals(truck1.get('cargo').length, 7, 'the truck should have 10 pieces of cargo');
+  equals(truck1.get('cargo').length, 7, 'the truck should have 7 pieces of cargo');
 
   SC.run(function() {
     var netflixDvds = BagOfStuff.create({
