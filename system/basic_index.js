@@ -9,6 +9,10 @@
 DataStructures.BasicIndex = SC.Object.extend({
   isIndexer: YES,
 
+  specialKeys: {
+    MATCH_ALL: '*'
+  },
+
   keyValues: null, // fake property - use for change notifications
 
   table: null,

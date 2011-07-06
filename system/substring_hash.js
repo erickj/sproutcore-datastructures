@@ -48,6 +48,8 @@ DataStructures.SubstringHash = DataStructures.BasicIndex.extend({
    * lookup time: O(1)
    */
   lookup: function(str) {
+    if (str == this.specialKeys.MATCH_ALL) return this._values.copy();
+
     if (!str || str.length < this.get('min')) return null;
     str = this._normalize(str).substring(0,this.get('max'));
     var idxs = this._substrs[str] || [];
