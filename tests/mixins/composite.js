@@ -723,3 +723,60 @@ test("modifying an array value is possible", function() {
   ok(SC.A(aComposite.get('anArray')).indexOf(2) >= 0, 'anArray should now also contain 2');
 });
 */
+
+test('composite children can be sorted', function() {
+  var aSortedComposite = SC.Object.create(DataStructures.Composite, {
+    compositeProperties: ['theCompositeValue'],
+
+    compositeCompare: function(a,b) {
+      var aSortValue = a.sortValue,
+        bSortValue = b.sortValue,
+        chooseB = 1,
+        chooseA = -1;
+
+      if (SC.none(aSortValue)) return chooseB;
+      if (SC.none(bSortValue)) return chooseA;
+
+      return a.sortValue <= b.sortValue ? chooseB : chooseA; // reverse sort
+    }
+  });
+
+  var children = [1,2,3,4,5].map(function(i) {
+    return SC.Object.create(DataStructures.Composite, {
+      compositeParents: aSortedComposite,
+      compositeProperties: ['theCompositeValue'],
+      sortValue: i,
+      theCompositeValue: i*100 // just to be different than sortValue
+    });
+  });
+
+  //
+  // test composite children who provide matching sort criteria
+  //
+  equals(aSortedComposite.get('theCompositeValue')[0], 500, 'the last child should provide the first value in the composite');
+  equals(aSortedComposite.get('theCompositeValue')[4], 100, 'the first child should provide the last value in the composite');
+
+  //
+  // test that recursive sort is applied properly, i.e. subsorts
+  //
+  var subchildrenParent = children[3]; // the 2nd to last child
+  subchildrenParent.compositeCompare = aSortedComposite.compositeCompare;
+
+  SC.run(function() {
+    var subchildren = [4.1, 4.2, 4.3, 4.4, 4.5].map(function(i) {
+      return SC.Object.create(DataStructures.Composite, {
+        compositeParents: subchildrenParent,
+        compositeProperties: ['theCompositeValue'],
+        sortValue: i,
+        theCompositeValue: i*1000
+      });
+    });
+  });
+
+  var expectedValueOrder = [500,400,4500,4400,4300,4200,4100,300,200,100];
+
+  expect(expectedValueOrder.length + 2);
+  expectedValueOrder.forEach(function(i,idx) {
+    equals(aSortedComposite.get('theCompositeValue')[idx], i, '%@ should be the value at %@'.fmt(i,idx));
+  });
+});

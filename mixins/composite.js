@@ -191,13 +191,24 @@ DataStructures.Composite = {
      *  we'll be trying to +doCompositeOperation+ on this return list
      */
     var ret = [this];
-    this.compositeChildren.forEach(function(c) {
+    this.compositeSortChildren().forEach(function(c) {
       if (!arguments[0]) return;
       ret = ret.concat(c.get('compositeList'));
     });
 
     return ret.flatten();
   }.property('isCompositePiece').cacheable(),
+
+  compositeCompare: null,
+  compositeSortChildren: function() {
+    var children = this.compositeChildren,
+      that = this,
+      boundCompareFn = this.compositeCompare && function() {
+        return that.compositeCompare.apply(that, arguments);
+      };
+
+    return boundCompareFn ? children.sort(boundCompareFn) : children;
+  },
 
   compositeHasChild: function(c) {
     if (!this.get('isCompositePiece')) return null;
