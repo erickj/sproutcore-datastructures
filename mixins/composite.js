@@ -3,38 +3,142 @@
 // Copyright: ©2011 Junction Networks
 // Author:    Erick Johnson
 // ==========================================================================
-/*globals DataStructures */
+/*globals DS */
 
-/**
-  @namespace
+/** @namespace
 
-  Support methods for the Composite design pattern.
-  see http://en.wikipedia.org/wiki/Composite_pattern
+  Allows objects to be neatly composed with each other
+  in a generic fashion. Each composable piece in the
+  overall directed acyclic graph (DAG) is able to
+  function independently of the other parts of the
+  graph.
 
-  A mojor design goal has been to keep the composite completely
-  bottom up composible.  So no part at the top needs to know about
-  new composite properties added from the bottom.
+  This allows composing a given set of properties together
+  onto a parent node like so:
+
+     var Firefly = SC.Object.extend(DS.Composite);
+
+     var serenity = Firefly.create({
+       weapons: ['crybaby'],
+     });
+
+     var jayne = SC.Object.create(DS.Composite, {
+       compositeParents: [serenity],
+       compositeProperties: ['weapons'],
+       weapons: ['Vera']
+     });
+
+
+  @see <a href="http://en.wikipedia.org/wiki/Composite_pattern">Composite Pattern</a>
 */
-DataStructures.Composite = {
-  DEBUG_COMPOSITE: NO,
-
-  compositeParents: null, // can be an array or object
+DS.Composite = {
 
   /**
-   * In order to understand anything about this implementation
-   * you need to understand compositeProperties. Acts like the
-   * component declaring the interface of compositeProperties
+    Walk like a duck.
+    @type Boolean
+    @default YES
    */
-  // TODO: should these be added to concatenate properties
+  isCompositePiece: YES,
+
+  /**
+    The ancestors that this node is connected to in the DAG.
+
+    Altering `compositeParents` inline will update the
+    DAG to account for the changes.
+
+    When `compositeParents` set to `null`, the composite
+    is the root of the DAG.
+
+    Adding any parents appends this composite node as
+    a leaf to each of the parents defined (altering
+    `compositeChildren` of each of the `compositeParents`).
+
+    Note that this is a DAG, where cycles are forbidden.
+    This means that creating a cycle in the composite
+    will result in an error being thrown.
+
+    @type Array|Object
+    @default null
+   */
+  compositeParents: null,
+
+  /**
+    The decendents that this node is connected to in the DAG.
+
+    Altering `compositeChildren` inline will update the
+    DAG to account for the changes.
+
+    When `compositeChildren` set to `null`, the composite
+    is a leaf node on the DAG.
+
+    Adding any children appends this composite node as a
+    parent to each of the children defined (altering
+    `compositeParents` of each of the `compositeChildren`).
+
+    As with `compositeParents`, cycles are forbidden and
+    have the same ramifications.
+
+    @type Array|Object
+    @default null
+   */
+  compositeChildren: null,
+
+  /**
+    The list of properties that should percolate up the DAG.
+
+    If properties of the same name exist for a given path
+    on the DAG, they will be catenated together in an Array.
+
+    This means that if you have:
+        var library = SC.Object.create(DS.Composite, {
+          compositeProperties: ['books', 'author']
+        });
+
+        SC.Object.create(DS.Composite, {
+          compositeParents: [library],
+          author: "Douglas Adams",
+          books: ["Hitchhiker's Guide to the Galaxy",
+                  "The Restaurant at the End of the Universe",
+                  "Life, the Universe and Everything",
+                  "So Long, and Thanks For ALl the Fish",
+                  "Mostly Harmless"]
+        });
+
+        SC.Object.create(DS.Composite, {
+          compositeParents: [library],
+          author: "Neil Gaiman",
+          books: ["American Gods"],
+        });
+
+        library.get('author'); // ["Douglas Adams", "Neil Gaiman"]
+        library.get('books');  // ["Hitchhiker's Guide to the Galaxy", "The Restaurant at the End of the Universe", "Life, the Universe and Everything", "So Long, and Thanks For ALl the Fish", "Mostly Harmless", "American Gods"]
+
+    Note that if you tried to `get` `authors` in the previous
+    example, it would not work. Naming is not changed to
+    account for the fact that an item changed from being
+    singular to plural.
+
+    A simple workaround for that would be to have a one-way
+    binding that hooks `authors` to `author`.
+
+    TODO: should these be added to `concatenatedProperties`?
+
+    @type Array
+    @default null
+   */
   compositeProperties: null,
 
-  compositeChildren: null,
+  /**
+    Whether this composite should display it's actions.
+    Useful for debugging purposes.
+    @type Boolean
+    @default NO
+   */
+  DEBUG_COMPOSITE: NO,
+
   _cmpst_ChildIndex: null,
   _cmpst_Parents: null,
   _cmpst_ParentIndex: null,
-
-  /** quack */
-  isCompositePiece: true, // enabled in initMixin
 
   initMixin: function() {
     this.compositeChildren = [];
@@ -50,8 +154,6 @@ DataStructures.Composite = {
 
     this._cmpst_initCompositeProperties();
     this._cmpst_initCompositeParents();
-
-    this.set('isCompositePiece', true);
   },
 
   /**
