@@ -3,7 +3,7 @@
 // Copyright: ©2011 Junction Networks
 // Author:    Erick Johnson
 // ==========================================================================
-/*globals DataStructures */
+/*globals DataStructures DS*/
 
 /** @namespace
 
@@ -11,7 +11,7 @@
 
   @extends SC.Object
  */
-DataStructures = SC.Object.create(
+DataStructures = DS = SC.Object.create(
   /** @scope DataStructures.prototype */{
 
   NAMESPACE: 'DataStructures',
