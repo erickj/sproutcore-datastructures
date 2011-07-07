@@ -227,9 +227,14 @@ DS.Composite = {
     if (this.get('compositeParents').get('length') == 0) {
       return [this];
     } else {
-      return this.get('compositeParents').getEach('compositeRoot').uniq();
+      var ret = this
+                  .get('compositeParents')
+                  .getEach('compositeRoot')
+                  .flatten()
+                  .uniq();
+      return ret;
     }
-  }.property('compositeParents').cacheable(),
+  }.property(/* see _cmpst_notifyChildrenIfRootChanged */).cacheable(),
 
   compositeSupplant: function(composite) {
     var children = composite.get('compositeChildren');
@@ -474,7 +479,23 @@ DS.Composite = {
     this._cmpst_ParentIndex[SC.hashFor(p)] = pLen - 1;
 
     if (this.get('compositeParents').indexOf(p) < 0) {
-      this.get('compositeParents').push(p); // don't alert the observers
+      // don't alert the observers here:
+      //
+      // updates to _compositeParents_ and _compositeParents.[]_ will
+      // trigger +_cmpst_unbound_compositeParentsDidChange+.  This
+      // function loops over all parents of _this_, adding _this_ as a
+      // composite child.  What we're doing here in
+      // +_addCompositeParent+ is actually adding a new parent, if we
+      // notified the observers here then we'd be doing redundant
+      // work, adding _p_ as a parent here and later telling _p_ to
+      // add _this_ as a child.  This should have no negative side
+      // effects since adding children checks that the child isn't
+      // already a child, however it would be wasted cycles
+      this.get('compositeParents').push(p);
+
+      // TODO: dumb hack
+      // should be cleaned up when compositeParents get reworked
+      this._cmpst_notifyChildrenIfRootChanged();
     }
 
     return p;
@@ -497,6 +518,32 @@ DS.Composite = {
     this.get('compositeParents').removeObject(p);
 
     return true;
+  },
+
+  /**
+   * @private
+   *
+   * a hack i can live with... for now..
+   *
+   * since we can't notify a change to _compositeParents_ (see note in
+   * +_addCompositeParent+), _compositeRoot_ won't be updated
+   * naturally.  if _this_ is the root, and we're adding a parent to
+   * it, let everyone know that root has changed
+   */
+  _cmpst_notifyChildrenIfRootChanged: function() {
+    var root = this.get('compositeRoot'),
+      rootParents = this.get('compositeParents').filter(function(p) {
+        return p.get('compositeParents').length == 0;
+      }),
+      needUpdate = rootParents.reduce(function(prev, parent) {
+        return prev || !root.contains(parent);
+      },false);
+
+    if (needUpdate) {
+      this.get('compositeList').forEach(function(piece) {
+        piece.notifyPropertyChange('compositeRoot');
+      });
+    }
   },
 
   _cmpst_unbound_compositeChildrenDidChange: function(target,key,val,rev) {

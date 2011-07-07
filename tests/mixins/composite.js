@@ -179,9 +179,10 @@ test("DataStructures.Composite are destroyed", function () {
 });
 
 test("composite root", function() {
-  var camaro, camaro2011, v8Engine, superCharger;
+  var camaro, camaro2011, v8Engine, superCharger, intakeValve;
 
   camaro = Car.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 2000,
     horsePower: 250,
     name: 'camaro'
@@ -189,6 +190,7 @@ test("composite root", function() {
 
   SC.run(function() {
     v8Engine = Part.create({
+      compositeProperties: ['weight','horsePower'],
       compositeParents: camaro,
       weight: 300,
       horsePower: 100,
@@ -196,19 +198,88 @@ test("composite root", function() {
     });
 
     superCharger = Part.create({
+      compositeProperties: ['weight','horsePower'],
       compositeParents: v8Engine,
       weight: 10,
       horsePower: 50,
       name: 'superCharger'
     });
+
+    intakeValve = Part.create({
+      compositeProperties: ['weight','horsePower'],
+      compositeParents: superCharger,
+      weight: 10,
+      name: 'intakeValve'
+    });
   });
 
-  [camaro, v8Engine, superCharger].forEach(function(piece) {
+  var carsAndParts = [camaro, v8Engine, superCharger, intakeValve];
+
+  carsAndParts.forEach(function(piece) {
     ok(SC.isArray(piece.get('compositeRoot')), 'the composite root should always be an array at piece %@'.fmt(piece.name));
-    equals(piece.get('compositeRoot')[0].toString(),
-         camaro.toString(),
+    same(piece.get('compositeRoot')[0],
+         camaro,
          'camaro should be the root of the composite at piece %@'.fmt(piece.name));
   });
+
+  //
+  // test compositeRoot can change
+  //
+  var dealership;
+
+  SC.run(function() {
+    dealership = SC.Object.create(DataStructures.Composite);
+    dealership.addCompositeChild(camaro);
+  });
+
+  ok(camaro.compositeHasParent(dealership),
+    'prereq - delearship should be the composite parent of camaro');
+
+  carsAndParts.forEach(function(piece) {
+    same(piece.get('compositeRoot')[0],
+         dealership,
+         'the composite root should have changed for piece: %@'.fmt(piece));
+  });
+
+  //
+  // test multiple roots
+  //
+  var deliveryTruck;
+
+  SC.run(function() {
+    deliveryTruck = SC.Object.create(DataStructures.Composite);
+    deliveryTruck.addCompositeChild(camaro);
+  });
+
+  ok(camaro.compositeHasParent(dealership)
+     && camaro.compositeHasParent(deliveryTruck),
+    'prereq - deliveryTruck should have 2 compositeParents');
+
+  var root, rootOK;
+  carsAndParts.forEach(function(piece) {
+    root = piece.get('compositeRoot');
+    rootOK = root.length == 2
+               && SC.isEqual(root[0], dealership)
+               && SC.isEqual(root[1], deliveryTruck);
+    ok(rootOK, 'compositeRoot should be length 2 and have the correct members for piece %@'.fmt(piece));
+  });
+
+  //
+  // test staggered roots
+  //
+  var staggeredParent;
+  SC.run(function() {
+    staggeredParent = SC.Object.create(DataStructures.Composite);
+    staggeredParent.addCompositeChild(intakeValve);
+  });
+
+  ok(intakeValve.compositeHasParent(staggeredParent)
+     && intakeValve.compositeHasParent(superCharger),
+     'prereq - intakeValve should have 2 parents');
+
+  ok(intakeValve.get('compositeRoot').length == 3
+     && intakeValve.get('compositeRoot').contains(staggeredParent),
+     'intakeValve should now have 3 compositeRoots, one should be staggeredParent');
 });
 
 test("composite supplant", function() {
