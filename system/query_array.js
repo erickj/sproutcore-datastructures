@@ -62,6 +62,8 @@ require('ext/delegate_support');
 DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   MAXTIME: 100,
 
+  DEBUG_QUERY_ARRAY: false,
+
   /* quack */
   isQueryArray: true,
 
@@ -121,8 +123,34 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     return i >= 0 ? this._mapPrivateToPublicIndex(i) : i;
   },
 
-  // TODO - override add/removeArrayObserver to translate index spaces
-  // into the willChange/didChange callbacks into the referenceArray
+  /**
+   * @see addRangeObserver
+   * modify the index spaces for addArrayObserver callbacks
+   */
+  addArrayObservers: function(hash) {
+    var target = hash.target,
+      didChange = hash.didChange,
+      willChange = hash.willChange;
+
+    var idxSpaceTranslator = function _qaIdxSpaceTranslator(target,method,that) {
+      if (SC.typeOf(method) == SC.T_STRING) {
+        method = target[method];
+      }
+
+      return function _qaAnonArrayObserverIndexSetTranslationCb() {
+        var args = SC.A(arguments),
+          start = args[0],
+          privateIndex = that._mapPrivateToPublicIndex(start,true);
+        args[0] = privateIndex < 0 ? 0 : privateIndex;
+        return method.apply(target,args);
+      };
+    };
+
+    hash.didChange = idxSpaceTranslator(target, didChange, this);
+    hash.willChange = idxSpaceTranslator(target, willChange, this);
+
+    return SC.Array.addArrayObservers.apply(this,arguments);
+  },
 
   /**
    * Array.addRangeObserver explicitly leaves out deep observing of
@@ -341,10 +369,13 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    *
    * map an index from the private index space into the public index space
    */
-  _mapPrivateToPublicIndex: function(privateIdx) {
+  _mapPrivateToPublicIndex: function(privateIdx,forceZero) {
     var indexSet = this._indexSet,
       curPrivateIdx = indexSet.firstObject(),
       publicIdx = -1;
+
+    if (forceZero && (SC.none(curPrivateIdx) || curPrivateIdx < 0))
+      curPrivateIdx = 0;
 
     while(!SC.none(curPrivateIdx)
           && privateIdx >= curPrivateIdx
@@ -360,6 +391,9 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    */
   _refArrElems_willChange: function(start,removed,added) {
     if (removed && removed > 0) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.debug("DS.QueryArray: _refArrElems_willChange staging removal at %@ for %@ elements".fmt(start,removed));
+      }
       this._flushChanges(start,removed,true);
     }
     // TODO: teardown property chains when elems are removed from array
@@ -371,6 +405,9 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    */
   _refArrElems_didChange: function(start,removed,added) {
     if (added && added > 0) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.debug("DS.QueryArray: _refArrElems_didChange staging addition at %@ for %@ elements".fmt(start,added));
+      }
       this._flushChanges(start,added);
     }
   },
@@ -382,6 +419,24 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * element in the reference array in order to recalculate if
    * the element ever matches our query for inclusion in this
    * QueryArray
+   */
+
+  /**
+   * TODO: propertyDidChange observers fire a change to property '*'
+   * when an item is added to an array - we don't want this to happen.
+   * This creates duplicate notifications for the QueryArray since
+   * +_refArrElems_[did|will]Change+ observers also fire.  The
+   * QueryArray should work off the did/will change observers, and not
+   * the property did change observer in these cases, but there is no
+   * easy way of detecting this right now.  Come back to this problem.
+   *
+   * Current SC.Array behavior is fubar: Currently when refArray
+   * changes, the +_refArray_didChange+ observer fires first, then a
+   * propDidChange fires for only the LAST element in the array.  When
+   * calling +referenceArray.pushObject+, the propDidChange observer
+   * fires first for each object, then the +_refArrElems_didChange+
+   * observer fires.  So it's actually the propDidChange observer fire
+   * that is modifying the QueryArray currently.
    */
   _refArrEl_propDidChange: function(obj,prop,val,rev) {
     var i = this.get('referenceArray').indexOf(obj);
@@ -481,11 +536,17 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * calculating the operation as a removal
    */
   _flushChanges: function(start,changed,isRemoval) {
+    var timeStart = (new Date()).getTime();
+
     // we need to wait to calculate our flush changes until after
     // any currently running modification has completed
     if (this._modificationInProgress) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.warn("DS.QueryArray._flushChanges: modification is in progress, stashing changes until current modification complete");
+      }
       if (!this._flushQueue) this._flushQueue = [];
       this._flushQueue.push(SC.A(arguments));
+      return;
     }
 
     var q = this.get('query'),
@@ -518,6 +579,11 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       }
     }
 
+    if (this.DEBUG_QUERY_ARRAY) {
+      var delta = (new Date()).getTime() - timeStart;
+      SC.Logger.log("DS.QueryArray.flushChanges: changes calculated in %@ ms".fmt(delta));
+    }
+
     this._doModifications(addSets, removeSets, operations);
   },
 
@@ -548,9 +614,12 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     var startTime = (new Date()).getTime(),
       modificationTimeExceeded = false,
       that = this,
-      didExceedTime = function _qaInnerDidExceedTime() {
+      timeRemaining = function _qaInnerTimeRemaining() {
         var delta = (new Date()).getTime() - startTime;
-        return delta > that.MAXTIME;
+        return that.MAXTIME - delta;
+      },
+      didExceedTime = function _qaInnerDidExceedTime() {
+        return timeRemaining() <= 0;
       },
       makeCallback = function _qaInnerMakeCb(addSets, removeSets, operations, _resuming) {
         return function _qaInnerDoModificationCb() {
@@ -590,45 +659,24 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       // the inner +forEachRange+ loop
       if (!operativeSet || modificationTimeExceeded) return;
 
-      // mark which indices have completed so we can resume at the
-      // proper point later if we hit the timeout
-      if (!operativeSet._qa_done) operativeSet._qa_done = [];
-
       // wrap processing contiguous indices of the operative set (each range)
       // in calls to arrayContentWillChange, arrayContentDidChange, and
       // enumerableContentDidChange.  this will minimize calls made to objects
       // observing this query array
       operativeSet.forEachRange(function _qaInnerOpSetRangeIterator(start, length) {
-        // if modificationTimeExceeded then we will not process the
-        // remaining ranges after detecting a timeout.
-        // if operativeSet._qa_done.contains(start) then this whole range has
-        // been completed in a previous _doModification call.
-        if (modificationTimeExceeded
-            || operativeSet._qa_done.contains(start)) {
+        if (that.DEBUG_QUERY_ARRAY) {
+          SC.Logger.log('DS.QueryArray: Processing range from %@ to %@'.fmt(start,
+                                                                            length));
+        }
+
+        // if _modificationTimeExceeded_ then we will not process the
+        // remaining ranges after detecting a timeout.  if
+        // _operations[start].done_ then this whole range has been
+        // completed in a previous +_doModification+ call.
+        if (modificationTimeExceeded || operations[start].done) {
           return;
         }
 
-        var isRemovals = operations[start].isRemoval,
-          additions = isRemovals ? 0 : length,
-          removals = isRemovals ? length : 0;
-
-        // notify observers
-        this.arrayContentWillChange(start, removals, additions);
-
-        // TODO: timeout batching doesn't work at the current level.
-        // it needs to move into a record by record basis check
-        for (var i=start;i<(length+start);i++) {
-          operations[i]._doOperation(); // +_doOperation+ was set up in +_calculateOperation+
-          operativeSet._qa_done.push(i); // mark this range as done (this really only needs to be done for _start_)
-        }
-
-        // notify observers
-        this.beginPropertyChanges();
-        this.arrayContentDidChange(start, removals, additions);
-        this.enumerableContentDidChange();
-        this.endPropertyChanges();
-
-        // we've finished processing the entire current range -
         // check if we exceeded our timelimit, if so schedule another run
         if (didExceedTime()) {
           SC.Logger.warn('query array modification time exceeded, rescheduling');
@@ -654,6 +702,30 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
           },0); // end setTimeout
           modificationTimeExceeded = true;
         }       // end if (didExceedTime())
+
+        // if we haven't already exceeded our time limit then process
+        // the changes for this operativeSet
+        var isRemovals = operations[start].isRemoval,
+          additions = isRemovals ? 0 : length,
+          removals = isRemovals ? length : 0,
+          notifyStart = operations[start].idx;
+
+        // notify observers
+        this.arrayContentWillChange(notifyStart, removals, additions);
+
+        // do all the changes
+        for (var i=start;i<(length+start);i++) {
+          // +_doOperation+ was set up in +_calculateOperation+
+          operations[i]._doOperation();
+        }
+
+        // notify observers
+        this.arrayContentDidChange(notifyStart, removals, additions);
+        this.enumerableContentDidChange();
+
+        if (this.DEBUG_QUERY_ARRAY) {
+          SC.Logger.log('DS.QueryArray: time remaining %@ ms'.fmt(timeRemaining()));
+        }
       }, this); // end operativeSet.forEachRange
     }, this);   // end [removeSets, addSets].forEach
 
@@ -666,8 +738,6 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     this.set('_modificationInProgress',false);
 
     // cleanup
-    delete removeSets._qa_done;
-    delete addSets._qa_done;
     delete removeSets;
     delete addSets;
     delete operations;
@@ -687,7 +757,8 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
 
     var queryContained = qry.contains(obj,this.get('queryParameters')),
       contained = this.contains(idx),
-      isAddition = (!contained && queryContained);
+      isAddition = (!contained && queryContained),
+      that = this;
 
     isRemoval = SC.none(isRemoval) ? (contained && !queryContained) : isRemoval;
 
@@ -698,14 +769,19 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       idx: idx,
       isAddition: isAddition,
       isRemoval: isRemoval,
+      done: false,
       _doOperation: function() {
+        if (this.done) return;
+
         if (this.isAddition) {
-          SC.Logger.warn('item added to query array');
+          if (that.DEBUG_QUERY_ARRAY) SC.Logger.warn('item added to query array');
           this.set.add(this.idx);
         } else if (this.isRemoval) {
-          SC.Logger.warn('item removed from query array');
+          if (that.DEBUG_QUERY_ARRAY) SC.Logger.warn('item removed from query array');
           this.set.remove(this.idx);
         }
+
+        this.done = true;
       }
     };
   }

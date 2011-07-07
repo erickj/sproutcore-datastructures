@@ -220,8 +220,11 @@ test("Query Array indexOf and lastIndexOf", function() {
 test("large modifications will get chunked up on timeout", function() {
   SC.run(function() {
     qa = DataStructures.QueryArray.create({
+      DEBUG_QUERY_ARRAY: YES,
       referenceArray: a,
-      query: q
+      query: SC.Query.create({
+        conditions: 'value < 9000'
+      })
     });
   });
 
@@ -229,15 +232,18 @@ test("large modifications will get chunked up on timeout", function() {
 
   SC.run(function() {
     SC.Logger.log('-- adding lots of items');
-    for(var i=0; i<1000; i++) {
-      var v = i % EXPECTED_END; // create chunks
-      objs.push(SC.Object.create({value: v}));
+    for(var i=0; i<10000; i++) {
+      objs.push(SC.Object.create({value: i}));
     }
     qa.set('referenceArray', objs);
+
+    for(i=0; i<500; i++) {
+      objs.pushObject(SC.Object.create({value: -i}));
+    }
   });
 
-  equals(objs.get('length'), 1000, 'prereq - 1000 items were added to objs');
-  equals(qa.get('length'), 692, 'there should be a bunch of objects in qa');
+  equals(objs.get('length'), 10500, 'prereq - 10500 items were added to objs');
+  equals(qa.get('length'), 9500, 'there should be a bunch of objects in qa');
 
   SC.Logger.log('-- removing slice');
 
@@ -245,7 +251,7 @@ test("large modifications will get chunked up on timeout", function() {
     objs.removeAt(0, 1000);
   });
 
-//  equals(qa.get('length'), 0, 'prereq - there should less objects in qa');
+  equals(qa.get('length'), 8500, 'prereq - there should be less objects in qa');
 });
 
 test("query array can be a referenceArray", function() {

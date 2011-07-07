@@ -115,7 +115,7 @@ test("QueryArrays have observable enumerable content", function() {
   ok(peepingTom._starCount > 0, 'startCount should be > 0');
 });
 
-test("QueryArrays behavew with addArrayObservers/removeArrayObservers", function() {
+test("QueryArrays behaves with addArrayObservers/removeArrayObservers", function() {
   qa = DataStructures.QueryArray.create();
 
   var didChangeArgs = { count: 0 },
@@ -140,6 +140,9 @@ test("QueryArrays behavew with addArrayObservers/removeArrayObservers", function
     willChange: willChange
   });
 
+  //
+  // test array observers on setting referenceArray
+  //
   SC.run(function() {
     qa.beginPropertyChanges();
     qa.set('referenceArray',a).set('query',q);
@@ -148,6 +151,30 @@ test("QueryArrays behavew with addArrayObservers/removeArrayObservers", function
 
   ok(didChangeArgs.count > 0, 'didChange should have been called');
   ok(willChangeArgs.count > 0, 'willChange should have been called');
+
+  equals(willChangeArgs.start, 0, 'willChange should be changed at 0');
+  equals(willChangeArgs.added, qa.get('length'), 'willChange should be N additions');
+  equals(didChangeArgs.start, 0, 'didChange should be changed at 0');
+  equals(didChangeArgs.added, qa.get('length'), 'didChange should be N additions');
+
+  //
+  // test arrayObserver on updates
+  //
+  SC.run(function() {
+    a.pushObject(SC.Object.create({
+      value: EXPECTED_END - 1
+    }));
+  });
+
+  equals(willChangeArgs.start, qa.get('length') - 1,
+         'willChange should be changed at the last index');
+  equals(willChangeArgs.added, 1,
+         'willChange should be notified of one addition');
+
+  equals(didChangeArgs.start, qa.get('length') - 1,
+         'didChange should be changed at the last index');
+  equals(didChangeArgs.added, 1,
+         'didChange should be notified of one addition');
 
 });
 
