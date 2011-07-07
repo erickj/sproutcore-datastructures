@@ -53,15 +53,26 @@ test("QueryArrays have length and map indexes to the hidden array", function() {
   //
   // test forEach
   //
-  var c = [];
+  var c = [],
+    innerContext;
   qa.forEach(function(obj,idx) {
     c.push(idx);
-  });
+    same(obj, qa.objectAt(idx), 'object at %@ should be the same here and in qa'.fmt(idx));
+    innerContext = this;
+  },qa);
 
-  ok(c.length == qa.get('length'), 'TODO: this test sucks');
+  same(innerContext, qa, '_this_ in the +forEach+ should have been qa');
+  ok(c.length == qa.get('length'), 'c should match the length of qa');
+
+  // test index validity
+  var last = -1;
+  qa.forEach(function(obj,i) {
+    equals(i, (last + 1), 'index %@ should be 1 greater than the last'.fmt(i));
+    last = i;
+  });
 });
 
-test("QueryArrays update live", function() {
+test("QueryArray works with contains", function() {
   SC.run(function() {
     qa = DataStructures.QueryArray.create({
       referenceArray: a,
@@ -69,30 +80,102 @@ test("QueryArrays update live", function() {
     });
   });
 
+  var allContained = true;
+  for(var i=0;i<qa.get('length');i++) {
+    allContained = allContained && qa.contains(qa.objectAt(i));
+  }
+  ok(allContained, 'QueryArray should contain all the objects that it can iterate over');
+
+  ok(!qa.contains({}), 'QueryArray should NOT contain objects that it doesn\'t contain');
+});
+
+test("QueryArray works with slice", function() {
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: a,
+      query: q
+    });
+  });
+
+  var slice = qa.slice(0,3);
+
+  equals(slice.length, 3, 'slice should have 3 elements');
+
+  expect(slice.length + 1);
+  slice.forEach(function(obj,i) {
+    same(obj, qa.objectAt(i), 'slice object and qa object %@ should be the same'.fmt(i));
+  });
+});
+
+test("QueryArrays observe modifications to the reference array", function() {
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: a,
+      query: q
+    });
+  });
+
+  var triangularNumber = function(n) {
+    if (n <= 1) return 1;
+    return n + triangularNumber(--n);
+  };
+
   equals(qa.get('length'), EXPECTED_LENGTH, "prereq - query array should be EXPECTED_LENGTH elements");
 
   //
   // test additions
   //
   a.pushObject(SC.Object.create({value: (EXPECTED_START + 0.5)}));
-  equals(qa.get('length'), (EXPECTED_LENGTH + 1), "query array should be (EXPECTED_LENGTH + 1) elements after addition");
+  equals(qa.get('length'), (EXPECTED_LENGTH + 1), "pushObject: query array should be (EXPECTED_LENGTH + 1) elements after addition");
+  same(qa.objectAt(qa.get('length') - 1),
+       a.objectAt(a.get('length') - 1),
+       'pushObject does add new members onto the end of queryArray');
+
+  // test index validity
+  var last = -1;
+  qa.forEach(function(obj,i) {
+    same(obj, qa.objectAt(last + 1), 'pushObject: query array iteration is intact at object %@'.fmt(last + 1));
+    equals(i, (last + 1), 'pushObject: index %@ should be 1 greater than the last'.fmt(i));
+    last++;
+  });
 
   //
   // test removals - this should remove 2 elements from our query array
   //
+  var removed = qa.slice(0,2);
   SC.run(function() {
     a.removeAt(0,(EXPECTED_START + 2));
   });
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "query array should be (EXPECTED_LENGTH - 1) elements after removals");
+  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "removeAt: query array should have lost its first 2 objects");
+  removed.forEach(function(obj,i) {
+    ok(!qa.contains(obj), 'removeAt: should have removed object at index %@'.fmt(i));
+  });
+
+  // test index validity
+  last = -1;
+  qa.forEach(function(obj,i) {
+    same(obj, qa.objectAt(last + 1), 'removeAt: query array iteration is intact at object %@'.fmt(last + 1));
+    equals(i, (last + 1), 'removeAt: index %@ should be 1 greater than the last'.fmt(i));
+    last++;
+  });
 
   //
   // test noops
   //
   a.pushObject(SC.Object.create({value: EXPECTED_END + 1}));
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "query array should be (EXPECTED_LENGTH - 1) elements after noop");
+  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "noop: query array should be (EXPECTED_LENGTH - 1) elements after noop");
+
+  // test index validity
+  last = -1;
+  qa.forEach(function(obj,i) {
+    same(obj, qa.objectAt(last + 1), 'noop: query array iteration is intact at object %@'.fmt(last + 1));
+    equals(i, (last + 1), 'noop: index %@ should be 1 greater than the last'.fmt(i));
+    last++;
+  });
+
 });
 
-test("QueryArrays observe reference array object updates", function() {
+test("QueryArrays observe array member properties", function() {
   SC.run(function() {
     qa = DataStructures.QueryArray.create();
     qa.set('referenceArray',a);
@@ -101,37 +184,21 @@ test("QueryArrays observe reference array object updates", function() {
 
   equals(qa.get('length'), EXPECTED_LENGTH, "prereq1 - query array should be EXPECTED_LENGTH elements");
 
+  //
+  // test change to array member does remove element
+  //
   SC.run(function() {
     a[EXPECTED_END].set('value',0);
   });
 
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "t1 - query array should be (EXPECTED_LENGTH - 1) elements");
+  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "query array should be (EXPECTED_LENGTH - 1) elements");
 
   //
-  // test obj property changes to objects that are added after instantiation
+  // test changes to array members will add the element to the query array
   //
-
-  // addition
   var obj = SC.Object.create({value:(EXPECTED_START + 0.5)});
   a.pushObject(obj);
   equals(qa.get('length'), EXPECTED_LENGTH, "prereq2 - query array should be EXPECTED_LENGTH elements");
-
-  SC.run(function() {
-    obj.set('value',0);
-  });
-
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "t2 - query array should be (EXPECTED_LENGTH - 1) elements");
-
-  // removal
-  var obj2 = SC.Object.create({value:EXPECTED_END + 1});
-  a.pushObject(obj2);
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "prereq3 - query array should be (EXPECTED_LENGTH - 1) elements");
-
-  SC.run(function() {
-    obj.set('value',(EXPECTED_START + 0.5));
-  });
-
-  equals(qa.get('length'), EXPECTED_LENGTH, "t3 - query array should be EXPECTED_LENGTH elements");
 });
 
 test("QueryArrays content is accessible with objectAt", function() {
@@ -220,10 +287,10 @@ test("Query Array indexOf and lastIndexOf", function() {
 test("large modifications will get chunked up on timeout", function() {
   SC.run(function() {
     qa = DataStructures.QueryArray.create({
-      DEBUG_QUERY_ARRAY: YES,
+      DEBUG_QUERY_ARRAY: NO,
       referenceArray: a,
       query: SC.Query.create({
-        conditions: 'value < 9000'
+        conditions: 'value < 900'
       })
     });
   });
@@ -232,7 +299,7 @@ test("large modifications will get chunked up on timeout", function() {
 
   SC.run(function() {
     SC.Logger.log('-- adding lots of items');
-    for(var i=0; i<10000; i++) {
+    for(var i=0; i<1000; i++) {
       objs.push(SC.Object.create({value: i}));
     }
     qa.set('referenceArray', objs);
@@ -242,16 +309,16 @@ test("large modifications will get chunked up on timeout", function() {
     }
   });
 
-  equals(objs.get('length'), 10500, 'prereq - 10500 items were added to objs');
-  equals(qa.get('length'), 9500, 'there should be a bunch of objects in qa');
+  equals(objs.get('length'), 1500, 'prereq - 1500 items were added to objs');
+  equals(qa.get('length'), 1400, 'there should be a bunch of objects in qa');
 
   SC.Logger.log('-- removing slice');
 
   SC.run(function() {
-    objs.removeAt(0, 1000);
+    objs.removeAt(0, 100);
   });
 
-  equals(qa.get('length'), 8500, 'prereq - there should be less objects in qa');
+  equals(qa.get('length'), 1300, 'prereq - there should be less objects in qa');
 });
 
 test("query array can be a referenceArray", function() {

@@ -76,15 +76,6 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     var idxSet = SC.IndexSet.create();
     this.set('_indexSet', idxSet);
 
-    var delegatedAPI = {
-      // TODO: contains is wrong
-      contains      : idxSet.contains,
-      forEachObject : idxSet.forEachObject,
-      forEach       : idxSet.forEachObject
-    };
-
-    this.delegateAPI(idxSet, delegatedAPI);
-
     this.beginPropertyChanges();
     ['referenceArray', 'query'].forEach(function(p) {
       if (this.get(p)) this.notifyPropertyChange(p);
@@ -121,6 +112,20 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     startAt = this._mapPublicToPrivateIndex(startAt);
     var i = this._indexSet.lastIndexOf(obj,startAt);
     return i >= 0 ? this._mapPrivateToPublicIndex(i) : i;
+  },
+
+  forEach: function(callback, target) {
+    // wrap callback for index space translation
+    var wrapped = function _qaAnonForEachCBBuilder(callback, target, that) {
+      if (target === undefined) target = null;
+
+      return function _qaAnonForEachCB(next, idx, enumerable, context) {
+        return callback.call(target, next, that._mapPrivateToPublicIndex(idx), that);
+      };
+    }(callback, target, this);
+
+    this._indexSet.forEachObject(wrapped);
+    return this;
   },
 
   /**
@@ -354,7 +359,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       publicIdx--;
       privateIndex = indexSet.indexAfter(privateIndex);
     }
-    return (0 <= publicIdx && publicIdx < this.get('length')) ? privateIndex : -1;
+    return this._indexSet.contains(privateIndex) ? privateIndex : -1;
   },
 
   /**
@@ -369,13 +374,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    *
    * map an index from the private index space into the public index space
    */
-  _mapPrivateToPublicIndex: function(privateIdx,forceZero) {
+  _mapPrivateToPublicIndex: function(privateIdx) {
     var indexSet = this._indexSet,
       curPrivateIdx = indexSet.firstObject(),
       publicIdx = -1;
-
-    if (forceZero && (SC.none(curPrivateIdx) || curPrivateIdx < 0))
-      curPrivateIdx = 0;
 
     while(!SC.none(curPrivateIdx)
           && privateIdx >= curPrivateIdx
@@ -383,7 +385,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       publicIdx++;
       curPrivateIdx = indexSet.indexAfter(curPrivateIdx);
     }
-    return (curPrivateIdx == ++privateIdx) ? publicIdx : -1;
+    return (0 <= publicIdx && publicIdx < this.get('length')) ? publicIdx : -1;
   },
 
   /**
@@ -621,7 +623,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       didExceedTime = function _qaInnerDidExceedTime() {
         return timeRemaining() <= 0;
       },
-      makeCallback = function _qaInnerMakeCb(addSets, removeSets, operations, _resuming) {
+      makeCallback = function _qaInnerMakeCb(addSets, removeSets, operations, _resuming,that) {
         return function _qaInnerDoModificationCb() {
           return that._doModifications(addSets,
                                        removeSets,
@@ -683,7 +685,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
 
           // we don't need to modify anything for continuing the modification
           // because we're marking indices "done" as modifications are completed
-          var cb = makeCallback(addSets, removeSets, operations, true);
+          var cb = makeCallback(addSets, removeSets, operations, true, this);
 
           // use setTimeout for same idea as in SC.RecordArray,
           // invokeLater may put us in the same event loop - so
@@ -701,6 +703,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
             });
           },0); // end setTimeout
           modificationTimeExceeded = true;
+          return;
         }       // end if (didExceedTime())
 
         // if we haven't already exceeded our time limit then process
@@ -756,7 +759,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     idxSet = idxSet || this._indexSet;
 
     var queryContained = qry.contains(obj,this.get('queryParameters')),
-      contained = this.contains(idx),
+      contained = this._indexSet.contains(idx),
       isAddition = (!contained && queryContained),
       that = this;
 
