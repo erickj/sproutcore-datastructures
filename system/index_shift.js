@@ -1,3 +1,9 @@
+// ==========================================================================
+// Project:   DataStructures & Design Pattern Library
+// Copyright: ©2011 Junction Networks
+// Author:    Erick Johnson
+// ==========================================================================
+
 /**
  * IndexShifts are used to relate changes in an array's indices to an
  * IndexSet.  For example, given the following array, IndexSet, and a
@@ -170,7 +176,7 @@ DataStructures.IndexShift = SC.Object.extend({
     },this);
 
     ret.removeEach(removeIndices);
-    ret.addEach(newIndices);
+    ret.addEach(newIndices.compact());
 
     return ret;
   },
@@ -195,6 +201,7 @@ DataStructures.IndexShift = SC.Object.extend({
 
   _complextTranslateIndex: function(index) {
     var net = this.get('net');
+    return index + net;
   },
 
   _simpleTranslateIndex: function(index) {
@@ -203,6 +210,10 @@ DataStructures.IndexShift = SC.Object.extend({
   },
 
   _wasIndexRemoved: function(index) {
-    return this.get('removed') > 0 && this.get('start') >= index && index < this.get('start') + this.get('removed');
+    var removed = this.get('removed'),
+      start = this.get('start'),
+      lastRemovedIndex = this.get('start') + removed - 1;
+
+    return removed && start <= index && index <= lastRemovedIndex;
   }
 });

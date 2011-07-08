@@ -213,7 +213,6 @@ test("IndexShift can translate inner/negative/complex shift", function() {
   testExpectedResult(expectedResult);
 });
 
-
 /**
  * right/positive/*
  */
@@ -277,6 +276,25 @@ test("IndexShift can translate right/negative/complex shift", function() {
     'prereq - demoArray was modified appropriately');
   equals(indexShift.get('desc'), "right/negative/complex",
          'prereq - indexShift should indicat a right/negative/complex shift');
+
+  indexSet = indexShift.translateIndexSet(indexSet);
+
+  var expectedResult = [2,3,4];
+  testExpectedResult(expectedResult);
+});
+
+/**
+ * special cases
+ */
+test("IndexShift can translate split shift - inner/positive/simple", function() {
+  SC.run(function() {
+    demoArray.replace(2,0,[0]);
+  });
+
+  ok([1,2,0,3,4,5,6,7].isEqual(demoArray),
+    'prereq - demoArray was modified appropriately');
+  equals(indexShift.get('desc'), "inner/positive/simple",
+         'prereq - indexShift should indicat a inner/positive/simple shift');
 
   indexSet = indexShift.translateIndexSet(indexSet);
 
