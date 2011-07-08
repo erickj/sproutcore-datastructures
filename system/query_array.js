@@ -3,7 +3,8 @@
 // Copyright: ©2011 Junction Networks
 // Author:    Erick Johnson
 // ==========================================================================
-require('ext/delegate_support');
+sc_require('ext/delegate_support');
+sc_require('system/index_shift');
 
 /**
  * Overview:
@@ -388,15 +389,28 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     return (0 <= publicIdx && publicIdx < this.get('length')) ? publicIdx : -1;
   },
 
-  /**
-   * @private
-   */
+  _indexShiftQueue: null,
   _refArrElems_willChange: function(start,removed,added) {
+    if (!this._indexShiftQueue) this._indexShiftQueue = [];
+
+    var len = this.referenceArray.get('length');
+
+    // always create a shift, let processing decide later whether or
+    // not this is a shift we should care about - if it's even a shift
+    // at all
+    this._indexShiftQueue.push(DataStructures.IndexShift.create({
+      added: added,
+      removed: removed,
+      start: start,
+      length: len // need to capture len here BEFORE the array changes
+    }));
+
+    if (this.DEBUG_QUERY_ARRAY) {
+      SC.Logger.debug("DS.QueryArray: _refArrElems_willChange staging removal at %@ for %@ elements, added: %@, length: %@".fmt(start,removed,added,len));
+    }
+
     if (removed && removed > 0) {
-      if (this.DEBUG_QUERY_ARRAY) {
-        SC.Logger.debug("DS.QueryArray: _refArrElems_willChange staging removal at %@ for %@ elements".fmt(start,removed));
-      }
-      this._flushChanges(start,removed,true);
+      this._flushChanges(start,removed,true,this._indexShiftQueue.slice(-1)[0]);
     }
     // TODO: teardown property chains when elems are removed from array
     // @see sproutcore/f0be4029a186f5b1ce33c494878c126644dfd57f
@@ -406,11 +420,16 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * @private
    */
   _refArrElems_didChange: function(start,removed,added) {
+    if (!this._indexShiftQueue) this._indexShiftQueue = [];
+
+    if (this.DEBUG_QUERY_ARRAY) {
+      var len = this.referenceArray.get('length');
+      SC.Logger.debug("DS.QueryArray: _refArrElems_didChange staging addition at %@ for %@ elements, removed: %@, length: %@".fmt(start,added,removed,len));
+    }
+
+    var shift = this._indexShiftQueue.shift();
     if (added && added > 0) {
-      if (this.DEBUG_QUERY_ARRAY) {
-        SC.Logger.debug("DS.QueryArray: _refArrElems_didChange staging addition at %@ for %@ elements".fmt(start,added));
-      }
-      this._flushChanges(start,added);
+      this._flushChanges(start,added,false,shift);
     }
   },
 
@@ -536,9 +555,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * using removals from +refArrElems_willChange+. the objects will
    * still be in the reference array.  use isRemoval to force
    * calculating the operation as a removal
+   * @param IndexShift
    */
-  _flushChanges: function(start,changed,isRemoval) {
-    var timeStart = (new Date()).getTime();
+  _flushChanges: function(start,changed,isRemoval,indexShift) {
+    var debugTimeStart = (new Date()).getTime();
 
     // we need to wait to calculate our flush changes until after
     // any currently running modification has completed
@@ -582,11 +602,13 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     }
 
     if (this.DEBUG_QUERY_ARRAY) {
-      var delta = (new Date()).getTime() - timeStart;
+      var delta = (new Date()).getTime() - debugTimeStart;
       SC.Logger.log("DS.QueryArray.flushChanges: changes calculated in %@ ms".fmt(delta));
+      delete delta;
+      delete debugTimeStart;
     }
 
-    this._doModifications(addSets, removeSets, operations);
+    this._doModifications(addSets, removeSets, operations, indexShift);
   },
 
   _modificationInProgressObserver: function() {
@@ -609,10 +631,11 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * @param addSets - SC.IndexSet
    * @param removeSets - SC.IndexSet
    * @param operations - array of objects that respond to +_doOperation+
+   * @param IndexShift - an index shift object
    * @param _resuming - bool - internal use only
    */
   // TODO: setTimeout and the flushQueue are currently semi broken... fix this
-  _doModifications: function(addSets, removeSets, operations /*, _resuming */) {
+  _doModifications: function(addSets, removeSets, operations, indexShift /*, _resuming */) {
     var startTime = (new Date()).getTime(),
       modificationTimeExceeded = false,
       that = this,
@@ -739,6 +762,14 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     // use +set+ to alert +_modificationInProgressObserver+
     // to run any queued changes
     this.set('_modificationInProgress',false);
+
+    // handle any index shifts
+    if (indexShift && indexShift.get('isShift')) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.warn("Index shift detected: %@".fmt(indexShift));
+      }
+      this._indexSet = indexShift.translateIndexSet(this._indexSet);
+    }
 
     // cleanup
     delete removeSets;

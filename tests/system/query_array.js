@@ -107,7 +107,7 @@ test("QueryArray works with slice", function() {
   });
 });
 
-test("QueryArrays observe modifications to the reference array", function() {
+test("QueryArrays observe modifications to the reference array: additions", function() {
   SC.run(function() {
     qa = DataStructures.QueryArray.create({
       referenceArray: a,
@@ -115,21 +115,23 @@ test("QueryArrays observe modifications to the reference array", function() {
     });
   });
 
-  var triangularNumber = function(n) {
-    if (n <= 1) return 1;
-    return n + triangularNumber(--n);
-  };
+  var values = qa.getEach('value');
 
   equals(qa.get('length'), EXPECTED_LENGTH, "prereq - query array should be EXPECTED_LENGTH elements");
 
   //
-  // test additions
+  // test additions to end of referencArray
   //
-  a.pushObject(SC.Object.create({value: (EXPECTED_START + 0.5)}));
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    a.pushObject(SC.Object.create({value: (EXPECTED_START + 0.5)}));
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
   equals(qa.get('length'), (EXPECTED_LENGTH + 1), "pushObject: query array should be (EXPECTED_LENGTH + 1) elements after addition");
   same(qa.objectAt(qa.get('length') - 1),
        a.objectAt(a.get('length') - 1),
-       'pushObject does add new members onto the end of queryArray');
+       'pushObject: queryArray did add new member');
 
   // test index validity
   var last = -1;
@@ -139,40 +141,111 @@ test("QueryArrays observe modifications to the reference array", function() {
     last++;
   });
 
-  //
-  // test removals - this should remove 2 elements from our query array
-  //
-  var removed = qa.slice(0,2);
-  SC.run(function() {
-    a.removeAt(0,(EXPECTED_START + 2));
+  // test values
+  values.forEach(function(v,i) {
+    equals(qa.objectAt(i).get('value'), v, 'pushObject: value %@ should be in query array at %@'.fmt(v,i));
   });
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "removeAt: query array should have lost its first 2 objects");
+});
+
+test("QueryArrays observe modifications to the reference array: removals", function() {
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: a,
+      query: q
+    });
+  });
+
+  var values = qa.getEach('value'),
+    sliceSize = 2;
+
+  equals(qa.get('length'), EXPECTED_LENGTH, "prereq - query array should be EXPECTED_LENGTH elements");
+
+  //
+  // test removing from front of array
+  //
+  var removed = qa.slice(0,sliceSize);
+
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    a.removeAt(0,(EXPECTED_START + sliceSize));
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
+  equals(qa.get('length'), (EXPECTED_LENGTH - sliceSize), "removeAt: query array should have lost its first %@ objects".fmt(sliceSize));
   removed.forEach(function(obj,i) {
     ok(!qa.contains(obj), 'removeAt: should have removed object at index %@'.fmt(i));
   });
 
   // test index validity
-  last = -1;
+  var last = -1;
   qa.forEach(function(obj,i) {
     same(obj, qa.objectAt(last + 1), 'removeAt: query array iteration is intact at object %@'.fmt(last + 1));
     equals(i, (last + 1), 'removeAt: index %@ should be 1 greater than the last'.fmt(i));
     last++;
   });
 
+  // test values
+  values = values.slice(sliceSize,values.get('length'));
+  values.forEach(function(v,i) {
+    equals(qa.objectAt(i).get('value'), v, 'removeAt: value %@ should be in query array at %@'.fmt(v,i));
+  });
+});
+
+test("QueryArrays observe modifications to the reference array: noops", function() {
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: a,
+      query: q
+    });
+  });
+
+  var values = qa.getEach('value');
+
+  equals(qa.get('length'), EXPECTED_LENGTH, "prereq - query array should be EXPECTED_LENGTH elements");
+
   //
   // test noops
   //
-  a.pushObject(SC.Object.create({value: EXPECTED_END + 1}));
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "noop: query array should be (EXPECTED_LENGTH - 1) elements after noop");
+  var preNoopLen = qa.get('length');
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    a.pushObject(SC.Object.create({value: EXPECTED_END + 1}));
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
+  equals(qa.get('length'), preNoopLen, "noop: query array should be the same after noop");
 
   // test index validity
-  last = -1;
+  var last = -1;
   qa.forEach(function(obj,i) {
     same(obj, qa.objectAt(last + 1), 'noop: query array iteration is intact at object %@'.fmt(last + 1));
     equals(i, (last + 1), 'noop: index %@ should be 1 greater than the last'.fmt(i));
     last++;
   });
+});
 
+test("QueryArrays observe modifications to the reference array: replaceAt", function() {
+  SC.run(function() {
+    qa = DataStructures.QueryArray.create({
+      referenceArray: a,
+      query: q
+    });
+  });
+
+  //
+  // test replaceAt
+  //
+  var preReplaceLen = qa.get('length');
+  var values = qa.getEach('value');
+
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    a.replace(EXPECTED_START+2,1,[SC.Object.create({value: EXPECTED_END + 1})]);
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
+  equals(qa.get('length'), preReplaceLen - 1, "replaceAt: query array should have lost an object");
+  equals(qa.objectAt(2).get('value'), values.objectAt(3), 'replaceAt: queryArray should have lost the object at 2');
 });
 
 test("QueryArrays observe array member properties", function() {
