@@ -131,9 +131,6 @@ test("QueryArrays observe modifications to the reference array: additions", func
   qa.DEBUG_QUERY_ARRAY = NO;
 
   equals(qa.get('length'), (EXPECTED_LENGTH + 1), "pushObject: query array should be (EXPECTED_LENGTH + 1) elements after addition");
-  same(qa.objectAt(qa.get('length') - 1),
-       a.objectAt(a.get('length') - 1),
-       'pushObject: queryArray did add new member');
 
   testCompareQueryArrayValues(qa, values, "pushObject:");
   testIndexValidity(qa, "pushObject:");
@@ -206,6 +203,27 @@ test("QueryArrays observe modifications to the reference array: replaceAt", func
 
   testCompareQueryArrayValues(qa, values, 'replaceAt:');
   testIndexValidity(qa, "replaceAt:");
+});
+
+test("QueryArrays observe modifications to the referernce array: split sets", function() {
+  var values = qa.getEach('value');
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    // push an object onto the end
+    a.pushObject(SC.Object.create({value: EXPECTED_START + 1}));
+    values.push(EXPECTED_START + 1);
+  });
+
+  // let changes run between run loops
+  SC.run(function() {
+    // remove an object to create a shift
+    a.removeAt(EXPECTED_START,1);
+    values.removeAt(0);
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
+  testCompareQueryArrayValues(qa, values, 'split modifications:');
+  testIndexValidity(qa, "split modifications:");
 });
 
 test("QueryArrays observe array member properties", function() {
