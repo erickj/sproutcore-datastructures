@@ -5,6 +5,8 @@
 // ==========================================================================
 
 /**
+ * Overview:
+ *
  * IndexShifts are used to relate changes in an array's indices to an
  * IndexSet.  For example, given the following array, IndexSet, and a
  * transformation:
@@ -22,11 +24,16 @@
  *
  *   IndexSet: {start: 1, length: 1}, {start: 4, length: 2}
  *
+ * IndexShifts are used to provide a canonical description of these
+ * array modifications to an IndexSet, so that a new set may be
+ * created that yields the same result as the original set.
+ *
  * IndexShifts are defined as net changes in the size of a reference
- * array. There are 3 dimensions of shifts, the class, the sign, and
+ * array. There are 3 dimensions of shifts: the class, the sign, and
  * the complexity.
  *
- * Shift Class:
+ * Class:
+ *
  * There are 3 classes of shifts: left, inner, and right.
  * See the following for examples of each:
  *
@@ -43,11 +50,14 @@
  *              . .      . .
  *
  * The dots (.) above help to display what each class is.  A left
- * shift has elements in the original array anchored to the right,
- * an inner shift has anchors on the left and right, and a right
- * shift has anchors to the left.
+ * shift has elements in the original array anchored to the right
+ * (additions/removals happen on the left), an inner shift has anchors
+ * on the left and right (additions/removals are in between), and a
+ * right shift has anchors to the left (additions/removals occur on
+ * the right).
  *
- * Shift Sign:
+ * Sign:
+ *
  * negativeShift:
  *   a negative net change
  *
@@ -57,16 +67,51 @@
  * Each shift class example above lists a negativeShift on the left
  * and a positiveShift on the right.
  *
- * Shift Complexity:
- * A complex shift is a shift with both additions and removals.  A
+ * Complexity:
+ *
+ * A complex shift is a shift with both additions AND removals.  A
  * simple shift is one which only has additions OR removals.
  *
- * This yields 12 permutations of shifts.
+ * Usage:
+ *
+ * To create an index shift, do it from the +willChange+ function of
+ * an array observer. Create the IndexShift with the parameters
+ * supplied to the +willChange+ function plus the current array
+ * length:
+ *
+ * willChange: function(start, removed, added) {
+ *   var shift = DataStructures.IndexShift.create({
+ *     start: start,
+ *     added: added,
+ *     removed: removed,
+ *     length: array.get('length')
+ *   });
+ * }
+ *
+ * Once you have a shift and the changes have processed in the array,
+ * then apply the changes to the IndexSet in the +didChange+ function
+ * of an array observer.
+ *
+ * didChange: function(start, removed, added) {
+ *   var newIndexSet = shift.translateIndexSet(oldIndexSet);
+ * }
  */
 DataStructures.IndexShift = SC.Object.extend({
+
+  DEBUG: NO,
+
+  /**
+   * these values can be set directly from parameters passed to
+   * +arrayWillChange+
+   */
   added: null,
   removed: null,
   start: null,
+
+  /**
+   * this should be the length of the array BEFORE the change occurs
+   * (i.e. the length at the time +arrayWillChange+ observer fires)
+   */
   length: null,
 
   net: function() {
@@ -111,12 +156,20 @@ DataStructures.IndexShift = SC.Object.extend({
       newLastIndex = newLength - 1;
 
     /**
-     * TODO: hacky special case - there is probably a more elegant
+     * N.B.: hacky special case - there is probably a more elegant
      * answer to this question. to see the bug set
      * _specialCaseSolution_ to false and run
      * tests/system/index_shift.  Track down the bug you find there to
      * figure out the question to the problem.  Seeing the problem
-     * will be better than I can do explaining it.
+     * will be better than I can do explaining it, but here's my
+     * attempt:
+     *
+     * In my original implementation, when a complex negaitve right
+     * shift occured, if the start index plus the number of removed
+     * elements is equal to the length of the array, the original
+     * heuristic calculated it as an inner shift, when it was actually
+     * a right shift.  There is probably a more normal form for the
+     * left/inner/right calculation below, but this works.
      */
     var specialCase = (this.get('length') == start + removed);
 
@@ -138,7 +191,7 @@ DataStructures.IndexShift = SC.Object.extend({
       return 'right';
 
     return 'unknown';
-  }.property('net', 'start', 'added', 'removed'),
+  }.property('net', 'start', 'added', 'removed', 'length'),
 
   desc: function() {
     return [this.get('class'),this.get('sign'),this.get('complexity')].join('/');
@@ -148,21 +201,27 @@ DataStructures.IndexShift = SC.Object.extend({
     return "IndexShift:<%@>".fmt(this.get('desc'));
   },
 
+  /**
+   * @param {SC.IndexSet}
+   * @return {SC.IndexSet}
+   */
   translateIndexSet: function(indexSet) {
+    // right shifts don't require any work - hooray!
     if (!this.get('isShift') || this.get('isRight')) {
       return indexSet;
     }
+
     var ret = SC.IndexSet.create(indexSet),
       start = this.get('start'),
-      st = function() {
+      indexStart = function() {
         var ret = indexSet.firstObject();
         while (ret < start && ret >= 0) ret = indexSet.indexAfter(ret);
         return indexSet.rangeStartForIndex(ret);
       }(),
-      ln = ret.get('length');
+      len = ret.get('length');
 
     var newIndices = [], removeIndices = [];
-    indexSet.forEachIn(st, ln, function(idx, set, source) {
+    indexSet.forEachIn(indexStart, len, function(idx, set, source) {
       var translated = this.translateIndex(idx);
 
       if (this.DEBUG) {
@@ -183,6 +242,9 @@ DataStructures.IndexShift = SC.Object.extend({
 
   /**
    * translate an index in this shift, null indicates it was removed
+   *
+   * @param {Number} - index to translate
+   * @return {Number} - translated index
    */
   translateIndex: function(index) {
     var start = this.get('start');
@@ -194,17 +256,22 @@ DataStructures.IndexShift = SC.Object.extend({
       return null;
 
     if (this.get('isComplex'))
-      return this._complextTranslateIndex(index);
+      return this._complextTranslation(index);
 
-    return this._simpleTranslateIndex(index);
+    return this._simpleTranslation(index);
   },
 
-  _complextTranslateIndex: function(index) {
+  _simpleTranslation: function(index) {
     var net = this.get('net');
     return index + net;
   },
 
-  _simpleTranslateIndex: function(index) {
+  // TODO: currently this is IDENTICAL to +_simpleTranslation+,
+  // however I believe there may be more to a complex shift.  I think
+  // it may be necessary to process the additions and removals
+  // separately - however I would need to study shifts more to
+  // determine whether this is true or not.
+  _complextTranslation: function(index) {
     var net = this.get('net');
     return index + net;
   },
