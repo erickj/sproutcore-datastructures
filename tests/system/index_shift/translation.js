@@ -71,7 +71,7 @@ function testTranslation(lambda, expectedDemo, expectedDesc, expectedResult) {
   ok(expectedDemo.isEqual(demoArray),
     'prereq - demoArray was modified appropriately');
   equals(indexShift.get('desc'), expectedDesc,
-         'prereq - indexShift should indicat a left/positive/simple shift');
+         'prereq - indexShift should indicat a %@ shift'.fmt(expectedDesc));
 
   // do translation
   indexSet = indexShift.translateIndexSet(indexSet);
@@ -203,10 +203,43 @@ test("IndexShift can translate right/negative/complex shift", function() {
 /**
  * special cases
  */
-test("IndexShift can translate split shift - inner/positive/simple", function() {
+test("IndexShift can translate continguous IndexSet into noncontiguous IndexSet after shift - inner/positive/simple", function() {
   var fn = function() {
     demoArray.replace(2,0,[0]);
   };
 
   testTranslation(fn,[1,2,0,3,4,5,6,7], "inner/positive/simple",[2,3,4]);
+});
+
+test("IndexShift can translate noncontiguous IndexSet after shift - inner/negative/simple", function() {
+  var fn = function() {
+    indexSet.add(6,1);
+    demoArray.replace(5,1,[]);
+  };
+
+  testTranslation(fn, [1,2,3,4,5,7], "inner/negative/simple", [2,3,4,7]);
+});
+
+test("IndexShift can translate noncontiguous IndexSet into contiguous IndexSet after shift - inner/negative/simple", function() {
+  var fn = function() {
+    indexSet.add(5,1);
+    demoArray.replace(4,1,[]);
+  };
+
+  testTranslation(fn, [1,2,3,4,6,7], "inner/negative/simple", [2,3,4,6]);
+ });
+
+test("IndexShift can translate across extend noncontiguous ranges - left/negative/simple", function() {
+  [8,9,10,11,12,13,14,15,16,17,18,19,20].forEach(function(i) {
+    demoArray.push(i); // don't fire observers
+  });
+  indexShift.length = demoArray.length;
+
+  var fn = function() {
+    indexSet.add(16,2);
+    demoArray.replace(0,1,[]);
+  };
+debugger;
+  testTranslation(fn, [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+                  'left/negative/simple', [2,3,4,17,18]);
 });

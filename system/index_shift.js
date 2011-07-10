@@ -213,25 +213,31 @@ DataStructures.IndexShift = SC.Object.extend({
 
     var ret = SC.IndexSet.create(indexSet),
       start = this.get('start'),
-      indexStart = function() {
+      shiftStart = function() {
         var ret = indexSet.firstObject();
         while (ret < start && ret >= 0) ret = indexSet.indexAfter(ret);
         return indexSet.rangeStartForIndex(ret);
-      }(),
-      len = ret.get('length');
+      }();
 
     var newIndices = [], removeIndices = [];
-    indexSet.forEachIn(indexStart, len, function(idx, set, source) {
-      var translated = this.translateIndex(idx);
 
-      if (this.DEBUG) {
-        SC.Logger.warn("Index %@ translated to %@".fmt(idx,translated));
-      }
+    indexSet.forEachRange(function(rngStart, rngLen) {
+      // skip the range if it's before the shift
+      if ((rngStart + rngLen - 1) < shiftStart) return;
 
-      if (translated != idx) {
-        removeIndices.push(idx);
-        newIndices.push(translated);
-      }
+      indexSet.forEachIn(rngStart, rngLen, function(idx) {
+        // skip the index if it's before the shift
+        if (idx < shiftStart) return;
+
+        var translated = this.translateIndex(idx);
+        if (this.DEBUG)
+          SC.Logger.warn("Index %@ translated to %@".fmt(idx,translated));
+
+        if (translated != idx) {
+          removeIndices.push(idx);
+          newIndices.push(translated);
+        }
+      },this);
     },this);
 
     ret.removeEach(removeIndices);
