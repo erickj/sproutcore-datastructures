@@ -3,7 +3,7 @@
 // Copyright: ©2011 Junction Networks
 // ==========================================================================
 /*globals DataStructures module test ok equals same stop start */
-var q, a, qa;
+var q, a, qa, initialState = [4,5,6,7,8,9,10,11,12,13];
 var EXPECTED_LENGTH = 10;
 var EXPECTED_START = 4;
 var EXPECTED_END = 13;
@@ -36,6 +36,18 @@ module("DataStructures Query Array", {
   }
 });
 
+var testCompareQueryArrayValues = function(qa, valueArray, msgPrefix) {
+  var qaValues = qa.map(function(obj) {
+    return obj.get('value');
+  });
+
+  var msg = msgPrefix ? "%@ ".fmt(msgPrefix) : "";
+  msg += ("query array values [%@] should be equal to"
+         + " provided values [%@]").fmt(qaValues, valueArray);
+
+  ok(qaValues.isEqual(valueArray), msg);
+};
+
 test("QueryArrays have observable enumerable content", function() {
   var c = 0;
 
@@ -50,6 +62,8 @@ test("QueryArrays have observable enumerable content", function() {
     });
   });
 
+  testCompareQueryArrayValues(qa, initialState, 'prereq 1 -');
+
   // test observability
   ok(c > 0, 'c should be greater than zero');
 
@@ -61,6 +75,9 @@ test("QueryArrays have observable enumerable content", function() {
     a.pushObject(a.objectAt(EXPECTED_START));
   });
 
+  initialState.push(a.objectAt(EXPECTED_START).get('value'));
+  testCompareQueryArrayValues(qa, initialState, 'prereq 2 -');
+
   ok(c > lastCount, 'c should have been updated for an object add');
 
   lastCount = c;
@@ -71,6 +88,8 @@ test("QueryArrays have observable enumerable content", function() {
     a.removeAt(EXPECTED_START,1);
   });
 
+  initialState.shift();
+  testCompareQueryArrayValues(qa, initialState, 'prereq 3 -');
   ok(c > lastCount, 'c should have been updated for an object removed');
 
   //
@@ -107,8 +126,10 @@ test("QueryArrays have observable enumerable content", function() {
   SC.run(function() {
     SC.Logger.log('adding object');
     a.pushObject(a.objectAt(EXPECTED_START));
+    initialState.push(a.objectAt(EXPECTED_START).get('value'));
   });
 
+  testCompareQueryArrayValues(qa, initialState, 'prereq 4 -');
   ok(c > lastCount, 'prereq - count should have been up\'d for an object add');
   ok(peepingTom.enumDidChange, 'external observer should see enumerable content changes');
   ok(peepingTom.get('length'), qa.get('length'), 'qa properties are bindable');
