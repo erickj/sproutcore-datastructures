@@ -1,27 +1,77 @@
 sc_require('system/index');
 
 DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
-  key: null,
+  /* quack */
+  isKeySet: true,
 
-  transform: function() {
-    return [this.get('key')];
-  }, // this is a property, but NOT a computed property - the value is the function
-
-  /** don't edit from here down **/
-
-  keys: function() {
-    var keys = this.get('transform').call(this, (this.get('key')));
-    return SC.A(keys).compact().flatten().uniq();
-  }.property('key','transform').cacheable(),
+  _keys: null,
+  keys: function(k,v) {
+    this._keys = this._keys || [];
+    if (arguments.length == 2) {
+      this._keys = SC.A(v).compact().flatten().uniq();
+    }
+    return this._keys;
+  }.property().cacheable(),
 
   length: function() {
     return this.get('keys').length;
   }.property('keys').cacheable(),
 
   objectAt: function(i) {
-    if (!this._keys) {
-      this._keys = this.transform(this.get('key'));
-    }
+    var keys = this.get('keys');
     return this.get('keys').objectAt(i);
+  },
+
+  addKeys: function(k /*, k2, k3, ... kN */) {
+    var current = this.get('keys'),
+      newKeys = current.concat(SC.A(arguments).flatten());
+    this.set('keys',newKeys);
+    return this;
+  },
+
+  removeKeys: function(k /* k2, k3, ...kN */) {
+    var keys = this.get('keys'),
+      removeKeys = SC.A(arguments).flatten(),
+      len = removeKeys.length,
+      count = 0,
+      idx;
+
+    for(var i=0;i<len;i++) {
+      // the inner while loop should be unnecessary, since keys are
+      // supposed to be unique
+      while ((idx = keys.indexOf(removeKeys[i])) >= 0) { // <-- assign idx, :(
+        keys.removeAt(idx,1);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      this.notifyPropertyChange('keys');
+    }
+    return this;
+  },
+
+  /**
+   * return true if _this_ and _otherKeySet_ share a common key
+   *
+   * @param {DataStructures.KeySet}
+   * @return {Boolean}
+   */
+  intersects: function(otherKeySet) {
+    return this.intersection(otherKeySet).length > 0;
+  },
+
+  intersection: function(otherKeySet) {
+    var ret = [];
+    if (!otherKeySet.isKeySet) {
+      return ret;
+    }
+
+    var len = this.get('length'), key;
+    for (var i=0;i<len;i++) {
+      key = this.objectAt(i);
+      if (otherKeySet.contains(key)) ret.push(key);
+    }
+    return ret;
   }
 });
