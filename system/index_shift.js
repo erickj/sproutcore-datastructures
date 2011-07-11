@@ -221,6 +221,8 @@ DataStructures.IndexShift = SC.Object.extend({
 
     var newIndices = [], removeIndices = [];
 
+    // iterate over each range, adjusting those indices that have been
+    // affected by the shift.
     indexSet.forEachRange(function(rngStart, rngLen) {
       // skip the range if it's before the shift
       if ((rngStart + rngLen - 1) < shiftStart) return;
