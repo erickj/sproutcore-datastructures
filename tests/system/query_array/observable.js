@@ -36,6 +36,40 @@ module("DataStructures Query Array", {
   }
 });
 
+var setupArrayObservers = function(qa) {
+  var didChangeArgs = { count: 0, added: 0, removed: 0 },
+    didChange = function(start, removed, added) {
+      didChangeArgs.count++;
+      didChangeArgs.start = start;
+      didChangeArgs.removed += removed;
+      didChangeArgs.added += added;
+    };
+
+  var willChangeArgs = { count: 0, added: 0, removed: 0 },
+    willChange = function(start, removed, added) {
+      willChangeArgs.count++;
+      willChangeArgs.start = start;
+      willChangeArgs.removed += removed;
+      willChangeArgs.added += added;
+    };
+
+  SC.run(function() {
+    qa.addArrayObservers({
+      target: this,  // global object
+      didChange: didChange,
+      willChange: willChange
+    });
+  });
+
+  ok(didChangeArgs.count == 0, 'prereq - didChange should be zero');
+  ok(willChangeArgs.count == 0, 'prereq - willChange should be zero');
+
+  return {
+    willChangeArgs: willChangeArgs,
+    didChangeArgs: didChangeArgs
+  };
+};
+
 var testCompareQueryArrayValues = function(qa, valueArray, msgPrefix) {
   var qaValues = qa.map(function(obj) {
     return obj.get('value');
@@ -136,47 +170,46 @@ test("QueryArrays have observable enumerable content", function() {
   ok(peepingTom._starCount > 0, 'startCount should be > 0');
 });
 
-test("QueryArrays behaves with addArrayObservers/removeArrayObservers", function() {
+
+
+test("QueryArrays behaves with addArrayObservers/removeArrayObservers: setting reference array", function() {
   qa = DataStructures.QueryArray.create();
-
-  var didChangeArgs = { count: 0 },
-    didChange = function(start, removed, added) {
-      didChangeArgs.count++;
-      didChangeArgs.start = start;
-      didChangeArgs.removed = removed;
-      didChangeArgs.added = added;
-    };
-
-  var willChangeArgs = { count: 0 },
-    willChange = function(start, removed, added) {
-      willChangeArgs.count++;
-      willChangeArgs.start = start;
-      willChangeArgs.removed = removed;
-      willChangeArgs.added = added;
-    };
-
-  qa.addArrayObservers({
-    target: this,
-    didChange: didChange,
-    willChange: willChange
-  });
+  var observerArgs = setupArrayObservers(qa),
+    didChangeArgs = observerArgs.didChangeArgs,
+    willChangeArgs = observerArgs.willChangeArgs;
 
   //
   // test array observers on setting referenceArray
   //
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    qa.set('referenceArray',a).set('query',q);
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
+  ok(didChangeArgs.count > 0, 'didChange should have been called');
+  ok(willChangeArgs.count > 0, 'willChange should have been called');
+
+  equals(willChangeArgs.start, 0, 'willChange should be changed at 0');
+  equals(willChangeArgs.added, qa.get('length'), 'willChange should be %@ additions'.fmt(qa.get('length')));
+
+  equals(didChangeArgs.start, 0, 'didChange should be changed at 0');
+  equals(didChangeArgs.added, qa.get('length'), 'didChange should be %@ additions'.fmt(qa.get('length')));
+});
+
+test("QueryArrays behaves with addArrayObservers/removeArrayObservers: pushObject", function() {
+  qa = DataStructures.QueryArray.create();
+
   SC.run(function() {
     qa.beginPropertyChanges();
     qa.set('referenceArray',a).set('query',q);
     qa.endPropertyChanges();
   });
 
-  ok(didChangeArgs.count > 0, 'didChange should have been called');
-  ok(willChangeArgs.count > 0, 'willChange should have been called');
-
-  equals(willChangeArgs.start, 0, 'willChange should be changed at 0');
-  equals(willChangeArgs.added, qa.get('length'), 'willChange should be N additions');
-  equals(didChangeArgs.start, 0, 'didChange should be changed at 0');
-  equals(didChangeArgs.added, qa.get('length'), 'didChange should be N additions');
+  // setup observers AFTER setting content
+  var observerArgs = setupArrayObservers(qa),
+    didChangeArgs = observerArgs.didChangeArgs,
+    willChangeArgs = observerArgs.willChangeArgs;
 
   //
   // test arrayObserver on updates
@@ -187,6 +220,9 @@ test("QueryArrays behaves with addArrayObservers/removeArrayObservers", function
     }));
   });
 
+  ok(didChangeArgs.count > 0, 'didChange should have been called');
+  ok(willChangeArgs.count > 0, 'willChange should have been called');
+
   equals(willChangeArgs.start, qa.get('length') - 1,
          'willChange should be changed at the last index');
   equals(willChangeArgs.added, 1,
@@ -196,6 +232,73 @@ test("QueryArrays behaves with addArrayObservers/removeArrayObservers", function
          'didChange should be changed at the last index');
   equals(didChangeArgs.added, 1,
          'didChange should be notified of one addition');
+});
+
+test("QueryArrays behaves with addArrayObservers/removeArrayObservers: pushObjects - some items in range some not", function() {
+  qa = DataStructures.QueryArray.create();
+
+  SC.run(function() {
+    qa.beginPropertyChanges();
+    qa.set('referenceArray',a).set('query',q);
+    qa.endPropertyChanges();
+  });
+
+  // setup observers AFTER setting content
+  var observerArgs = setupArrayObservers(qa),
+    didChangeArgs = observerArgs.didChangeArgs,
+    willChangeArgs = observerArgs.willChangeArgs;
+
+  //
+  // test arrayObserver on updates
+  //
+  qa.DEBUG_QUERY_ARRAY = YES;
+  SC.run(function() {
+    var objects = [
+      SC.Object.create({value: EXPECTED_START + 1}),
+      SC.Object.create({value: EXPECTED_START + 2}),
+      SC.Object.create({value: EXPECTED_END + 1})
+    ];
+
+    a.replace(a.get('length'), 0, objects);
+  });
+
+  SC.run(function() {
+    a.objectAt(5).set('value',12);
+  });
+  qa.DEBUG_QUERY_ARRAY = NO;
+
+  // TODO: getting called once is ideal - but unfortunately w/ the
+  // current implementation issue of property did change getting
+  // called for each property insertion, this count will be N, where N
+  // is the number of additions to the array.  Fix the property did
+  // change issue for a big performance boost.
+  ok(didChangeArgs.count > 0, 'didChange was called %@ times'.fmt(didChangeArgs.count));
+  ok(willChangeArgs.count > 0, 'willChange was called %@ times'.fmt(didChangeArgs.count));
+
+  equals(willChangeArgs.start, qa.get('length') - 1,
+         'willChange should be changed at the last index');
+  equals(willChangeArgs.added, 2,
+         'willChange should be notified of two additions');
+
+  equals(didChangeArgs.start, qa.get('length') - 1,
+         'didChange should be changed at the last index');
+  equals(didChangeArgs.added, 2,
+         'didChange should be notified of two additions');
+});
+
+test("QueryArrays behaves with addArrayObservers/removeArrayObservers: removeAt", function() {
+  qa = DataStructures.QueryArray.create();
+
+  SC.run(function() {
+    qa.beginPropertyChanges();
+    qa.set('referenceArray',a).set('query',q);
+    qa.endPropertyChanges();
+  });
+
+  // setup observers AFTER setting content
+  var observerArgs = setupArrayObservers(qa),
+    didChangeArgs = observerArgs.didChangeArgs,
+    willChangeArgs = observerArgs.willChangeArgs;
 
   //
   // test arrayObservers on removals

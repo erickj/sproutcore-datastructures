@@ -64,6 +64,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   MAXTIME: 100,
 
   DEBUG_QUERY_ARRAY: false,
+  DEBUG_QUERY_ARRAY_TIMEOUT: false,
 
   /* quack */
   isQueryArray: true,
@@ -138,22 +139,54 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       didChange = hash.didChange,
       willChange = hash.willChange;
 
-    var idxSpaceTranslator = function _qaIdxSpaceTranslator(target,method,that) {
+    var idxSpaceTranslator = function _qaIdxSpaceTranslator(target,method,that,id) {
+      if (!method) return null;
+
       if (SC.typeOf(method) == SC.T_STRING) {
         method = target[method];
       }
 
-      return function _qaAnonArrayObserverIndexSetTranslationCb() {
+      var changeFn = function _qaAnonArrayObserverIndexSetTranslationCb() {
+        if (that.DEBUG_QUERY_ARRAY) {
+          SC.Logger.log("_qaAnonArrayObserverIndexSetTranslationCb:", arguments, arguments.callee.isWillChange ? 'willChange' : 'didChange');
+        }
+
         var args = SC.A(arguments),
           start = args[0],
-          privateIndex = that._mapPrivateToPublicIndex(start,true);
-        args[0] = privateIndex < 0 ? 0 : privateIndex;
+          publicIndex = that._mapPrivateToPublicIndex(start,true);
+
+        // TODO: fix this hack, to see what the hack is for delete the
+        // whole if/elseif block and run the observable tests.  the
+        // QueryArray willChange/didChange has a hard time getting the
+        // right start index to send in the willChange case when the
+        // objects don't exist in the array yet, and in the didChange
+        // case when the objects have been removed from the array.
+        if (arguments.callee.isWillChange && publicIndex < 0) {
+          publicIndex = that.get('length');
+        } else if (arguments.callee.isDidChange) {
+          // TODO:
+          // leave this big ugly conditional here to remind me to fix
+          // this ugly hack
+          if (that._indexShiftQueue) {
+            var lastShift = that._indexShiftQueue.slice(-1);
+            if (lastShift[0]) {
+              if (lastShift[0].get('net') < 0) {
+                publicIndex += Math.abs(lastShift[0].get('net'));
+              }
+            }
+          }
+        }
+
+        args[0] = publicIndex;
         return method.apply(target,args);
       };
+      changeFn[id] = true;
+
+      return changeFn;
     };
 
-    hash.didChange = idxSpaceTranslator(target, didChange, this);
-    hash.willChange = idxSpaceTranslator(target, willChange, this);
+    hash.didChange = idxSpaceTranslator(target, didChange, this, 'isDidChange');
+    hash.willChange = idxSpaceTranslator(target, willChange, this, 'isWillChange');
 
     return SC.Array.addArrayObservers.apply(this,arguments);
   },
@@ -405,11 +438,11 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       length: len // need to capture len here BEFORE the array changes
     }));
 
-    if (this.DEBUG_QUERY_ARRAY) {
-      SC.Logger.debug("DS.QueryArray: _refArrElems_willChange staging removal at %@ for %@ elements, added: %@, length: %@".fmt(start,removed,added,len));
-    }
-
     if (removed && removed > 0) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.debug("DS.QueryArray: _refArrElems_willChange staging removal at %@ for %@ elements, added: %@, length: %@".fmt(start,removed,added,len));
+      }
+
       this._flushChanges(start,removed,true,this._indexShiftQueue.slice(-1)[0]);
     }
     // TODO: teardown property chains when elems are removed from array
@@ -422,13 +455,12 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   _refArrElems_didChange: function(start,removed,added) {
     if (!this._indexShiftQueue) this._indexShiftQueue = [];
 
-    if (this.DEBUG_QUERY_ARRAY) {
-      var len = this.referenceArray.get('length');
-      SC.Logger.debug("DS.QueryArray: _refArrElems_didChange staging addition at %@ for %@ elements, removed: %@, length: %@".fmt(start,added,removed,len));
-    }
-
     var shift = this._indexShiftQueue.shift();
     if (added && added > 0) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        var len = this.referenceArray.get('length');
+        SC.Logger.debug("DS.QueryArray: _refArrElems_didChange staging addition at %@ for %@ elements, removed: %@, length: %@".fmt(start,added,removed,len));
+      }
       this._flushChanges(start,added,false,shift);
     }
   },
@@ -463,6 +495,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     var i = this.get('referenceArray').indexOf(obj);
 
     if (obj && !SC.none(i) && i >= 0) {
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.log("DS.QueryArray: _refArrEl_propDidChange: staging change at %@".fmt(i), arguments);
+      }
+
       this._flushChanges(i,1);
     }
   },
@@ -477,6 +513,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    */
   _refArr_cached: null,
   _refArr_didChange: function() {
+    if (this.DEBUG_QUERY_ARRAY) {
+      SC.Logger.log("DS.QueryArray._refArr_didChange:", arguments);
+    }
+
     if (SC.isEqual(this._refArr_cached, this.get('referenceArray')))
       return;
 
@@ -558,6 +598,9 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * @param IndexShift
    */
   _flushChanges: function(start,changed,isRemoval,indexShift) {
+    if (this.DEBUG_QUERY_ARRAY) {
+      SC.Logger.log("DS.QueryArray._flushChanges: ", arguments);
+    }
     var debugTimeStart = (new Date()).getTime();
 
     // we need to wait to calculate our flush changes until after
@@ -603,7 +646,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
 
     if (this.DEBUG_QUERY_ARRAY) {
       var delta = (new Date()).getTime() - debugTimeStart;
-      SC.Logger.log("DS.QueryArray.flushChanges: changes calculated in %@ ms".fmt(delta));
+      SC.Logger.log("DS.QueryArray._flushChanges: %@ changes calculated in %@ ms".fmt(operations.length, delta));
       delete delta;
       delete debugTimeStart;
     }
@@ -708,23 +751,31 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
 
           // we don't need to modify anything for continuing the modification
           // because we're marking indices "done" as modifications are completed
-          var cb = makeCallback(addSets, removeSets, operations, true, this);
-
-          // use setTimeout for same idea as in SC.RecordArray,
-          // invokeLater may put us in the same event loop - so
-          // we want to avoid that
-          setTimeout(function _qaInnerSetTimeoutCb() {
+          var innerCb = makeCallback(addSets, removeSets, operations, true, this),
+            outerCb = function _qaInnerSetTimeoutCb() {
             // TODO: this may actually schedule a rerun when we have completed
             // all the sets... it will effectively be a noop - oh well for now
             SC.run(function _qaInnerSetTimeoutSCRunCb() {
               if (!that || that.get('isDestroyed')) {
                 SC.Logger.warn('failed to complete delayed query array modification, query array does not exist');
               } else {
-                cb(); // continue the modification
+                innerCb(); // continue the modification
               }
-              delete cb;
+              delete innerCb;
             });
-          },0); // end setTimeout
+          };
+
+          // use setTimeout for same idea as in SC.RecordArray,
+          // invokeLater may put us in the same event loop - so we
+          // want to avoid that.  if we're trying to test however we
+          // NEED to run the reschedule in invokeLater so we can try
+          // this out in our testing framework
+          if (this.DEBUG_QUERY_ARRAY_TIMEOUT) {
+            this.invokeLater(outerCb);
+          } else {
+            setTimeout(outerCb,0); // end setTimeout
+          }
+
           modificationTimeExceeded = true;
           return;
         }       // end if (didExceedTime())
@@ -736,7 +787,6 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
           removals = isRemovals ? length : 0,
           notifyStart = operations[start].idx;
 
-        // notify observers
         this.arrayContentWillChange(notifyStart, removals, additions);
 
         // do all the changes
@@ -745,7 +795,6 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
           operations[i]._doOperation();
         }
 
-        // notify observers
         this.arrayContentDidChange(notifyStart, removals, additions);
         this.enumerableContentDidChange();
 
@@ -766,9 +815,12 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     // handle any index shifts
     if (indexShift && indexShift.get('isShift')) {
       if (this.DEBUG_QUERY_ARRAY) {
-        SC.Logger.warn("Index shift detected: %@".fmt(indexShift));
+        SC.Logger.warn("DS.QueryArray._modifyObserverSet: Index shift detected: %@, translating IndexSet: %@".fmt(indexShift, this._indexSet));
       }
       this._indexSet = indexShift.translateIndexSet(this._indexSet);
+      if (this.DEBUG_QUERY_ARRAY) {
+        SC.Logger.log("DS.QueryArray._modifyObserverSet: Translated IndexSet: %@".fmt(this._indexSet));
+      }
     }
 
     // cleanup
@@ -808,10 +860,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
         if (this.done) return;
 
         if (this.isAddition) {
-          if (that.DEBUG_QUERY_ARRAY) SC.Logger.warn('item added to query array');
+          if (that.DEBUG_QUERY_ARRAY) SC.Logger.warn('DS.QueryArray._calculateOperation._doOperation: item added to query array');
           this.set.add(this.idx);
         } else if (this.isRemoval) {
-          if (that.DEBUG_QUERY_ARRAY) SC.Logger.warn('item removed from query array');
+          if (that.DEBUG_QUERY_ARRAY) SC.Logger.warn('DS.QueryArray._calculateOperation._doOperation: item removed from query array');
           this.set.remove(this.idx);
         }
 
