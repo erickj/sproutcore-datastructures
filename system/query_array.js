@@ -562,7 +562,17 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * need to recalculate everything
    */
   _query_didChange: function() {
-    this.get('query').parse();
+    var query = this.get('query');
+
+    if (SC.typeOf(query.contains) != SC.T_FUNCTION) {
+      var e = new Error('query for QueryArray must respond to +contains+');
+      e.isBadQueryError = YES;
+      throw e;
+    }
+
+    if (SC.typeOf(query.parse) == SC.T_FUNCTION) {
+      query.parse();
+    }
     this._flushChanges();
   }.observes('query'),
 

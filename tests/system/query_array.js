@@ -9,7 +9,7 @@ var EXPECTED_START = 4;
 var EXPECTED_END = 13;
 var CONDITION = "value <= %@ AND value > %@".fmt(EXPECTED_END, EXPECTED_START - 1);
 
-module("DataStructures Query Array", {
+module("DataStructures QueryArray", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
@@ -49,7 +49,7 @@ var testCompareQueryArrayValues = function(qa, valueArray, msgPrefix) {
   });
 
   var msg = msgPrefix ? "%@ ".fmt(msgPrefix) : "";
-  msg += ("query array values [%@] should be equal to"
+  msg += ("QueryArray values [%@] should be equal to"
          + " provided values [%@]").fmt(qaValues, valueArray);
 
   ok(qaValues.isEqual(valueArray), msg);
@@ -61,7 +61,7 @@ var testIndexValidity = function(qa, msgPrefix) {
   msgTpl += "index %@ should be 1 greater than the last";
 
   var sameTpl = msgPrefix ? "%@ ".fmt(msgPrefix) : "";
-  sameTpl += "query array iteration is intact with object %@";
+  sameTpl += "QueryArray iteration is intact with object %@";
 
   qa.forEach(function(obj,i) {
     same(obj, qa.objectAt(last + 1), sameTpl.fmt(last + 1));
@@ -71,7 +71,7 @@ var testIndexValidity = function(qa, msgPrefix) {
 };
 
 test("QueryArrays have length and map indexes to the hidden array", function() {
-  equals(qa.get('length'), EXPECTED_LENGTH, "query array should be EXPECTED_LENGTH elements");
+  equals(qa.get('length'), EXPECTED_LENGTH, "QueryArray should be EXPECTED_LENGTH elements");
 
   // check that indexOf maps indexes properly
   equals(qa.indexOf(a.objectAt(EXPECTED_START)), 0, '+indexOf+ should show this is the first element');
@@ -116,7 +116,7 @@ test("QueryArray works with slice", function() {
 });
 
 test("QueryArrays observe array member properties", function() {
-  equals(qa.get('length'), EXPECTED_LENGTH, "prereq1 - query array should be EXPECTED_LENGTH elements");
+  equals(qa.get('length'), EXPECTED_LENGTH, "prereq1 - QueryArray should be EXPECTED_LENGTH elements");
 
   //
   // test change to array member does remove element
@@ -125,14 +125,14 @@ test("QueryArrays observe array member properties", function() {
     a[EXPECTED_END].set('value',0);
   });
 
-  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "query array should be (EXPECTED_LENGTH - 1) elements");
+  equals(qa.get('length'), (EXPECTED_LENGTH - 1), "QueryArray should be (EXPECTED_LENGTH - 1) elements");
 
   //
-  // test changes to array members will add the element to the query array
+  // test changes to array members will add the element to the QueryArray
   //
   var obj = SC.Object.create({value:(EXPECTED_START + 0.5)});
   a.pushObject(obj);
-  equals(qa.get('length'), EXPECTED_LENGTH, "prereq2 - query array should be EXPECTED_LENGTH elements");
+  equals(qa.get('length'), EXPECTED_LENGTH, "prereq2 - QueryArray should be EXPECTED_LENGTH elements");
 });
 
 test("QueryArrays content is accessible with objectAt", function() {
@@ -141,11 +141,11 @@ test("QueryArrays content is accessible with objectAt", function() {
   //
   // objectAt - calls to objectAt are SLOOOOOOWWWWWWWWW - known issue
   //
-  equals(qa.objectAt(0), a.objectAt(EXPECTED_START), 'query array should offset it\'s indices');
-  equals(qa.objectAt((EXPECTED_LENGTH - 1)), a.objectAt(EXPECTED_END), 'query array should offset it\'s indices');
+  equals(qa.objectAt(0), a.objectAt(EXPECTED_START), 'QueryArray should offset it\'s indices');
+  equals(qa.objectAt((EXPECTED_LENGTH - 1)), a.objectAt(EXPECTED_END), 'QueryArray should offset it\'s indices');
 });
 
-test("Query array can be replaced and all is well", function() {
+test("QueryArray can be replaced and all is well", function() {
   SC.run(function() {
     qa = DataStructures.QueryArray.create({
       referenceArray: a,
@@ -153,36 +153,36 @@ test("Query array can be replaced and all is well", function() {
     });
   });
 
-  equals(qa.get('length'), EXPECTED_LENGTH, "prereq - query array should be EXPECTED_LENGTH elements");
+  equals(qa.get('length'), EXPECTED_LENGTH, "prereq - QueryArray should be EXPECTED_LENGTH elements");
 
   //
   // test swapping arrays
   //
   var newArray = [];
   qa.set('referenceArray',newArray);
-  equals(qa.get('length'), 0, "query array should be 0 elements after replace");
+  equals(qa.get('length'), 0, "QueryArray should be 0 elements after replace");
 
   //
   // test old objects property observer was unbound
   //
   a[0].set('value',(EXPECTED_START + 1)); // TODO: exposes unbind error - propDidChange is still called... we only avoid it by checking that the obj idx is -1
-  equals(qa.get('length'), 0, "query array should have stopped watching old array values");
+  equals(qa.get('length'), 0, "QueryArray should have stopped watching old array values");
 
   //
   // test new array is observed
   //
   newArray.pushObject(SC.Object.create({value: 5}));
-  equals(qa.get('length'), 1, "query array should be 1 elements after replace and push");
+  equals(qa.get('length'), 1, "QueryArray should be 1 elements after replace and push");
 
   //
   // test new array element properties are observed
   //
   newArray[0].set('value',0);
-  equals(qa.get('length'), 0, "query array should be 0 after newArray element property change");
+  equals(qa.get('length'), 0, "QueryArray should be 0 after newArray element property change");
 });
 
-test("Query Array indexOf and lastIndexOf", function() {
-  equals(qa.get('length'), EXPECTED_LENGTH, "prereq - query array should be EXPECTED_LENGTH elements");
+test("QueryArray indexOf and lastIndexOf", function() {
+  equals(qa.get('length'), EXPECTED_LENGTH, "prereq - QueryArray should be EXPECTED_LENGTH elements");
 
   var first = qa.objectAt(0),
     firstInA = a.objectAt(EXPECTED_START);
@@ -241,7 +241,7 @@ test("large modifications will get chunked up on timeout", function() {
   equals(qa.get('length'), 1300, 'prereq - there should be less objects in qa');
 });
 
-test("query array can be a referenceArray", function() {
+test("QueryArray can be a referenceArray", function() {
   var qaCannibal;
   SC.run(function() {
     qaCannibal = DataStructures.QueryArray.create({
@@ -257,7 +257,7 @@ test("query array can be a referenceArray", function() {
   equals(qaCannibal.objectAt(1).get('value'), 7, 'first object should be 6');
 });
 
-test("query array can provide query parameters", function() {
+test("QueryArray can provide query parameters", function() {
   var qaCannibal;
   SC.run(function() {
     qa = DataStructures.QueryArray.create({
@@ -277,4 +277,35 @@ test("query array can provide query parameters", function() {
   });
 
   ok(qa.get('length') === 3, 'the query reference array values should get mapped on comparison');
+});
+
+test("QueryArray can be given query objects with no +parse+ method", function() {
+  var noParseQuery = {
+    contains: function() {
+      return true;
+    }
+  };
+
+  SC.run(function() {
+    qa.set('query', noParseQuery);
+  });
+
+  testCompareQueryArrayValues(qa, a.getEach('value'), "noParseQuery:");
+});
+
+test("QueryArray MUST be given a query object the responds to +contains+", function() {
+  var caught = 0,
+    err;
+
+  try {
+    SC.run(function() {
+      qa.set('query', {});
+    });
+  } catch(e) {
+    err = e;
+    caught++;
+  }
+
+  ok(caught == 1, "setting a query object with no +contains+ method throws an error");
+  ok(err.isBadQueryError, "error should be a bad query error");
 });
