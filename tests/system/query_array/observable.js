@@ -197,6 +197,22 @@ test("QueryArrays behaves with addArrayObservers/removeArrayObservers", function
   equals(didChangeArgs.added, 1,
          'didChange should be notified of one addition');
 
+  //
+  // test arrayObservers on removals
+  //
+  SC.run(function() {
+    a.removeAt(EXPECTED_START + 2,1);
+  });
+
+  equals(willChangeArgs.start, 2,
+         'willChange removal should start at index 2');
+  equals(willChangeArgs.removed, 1,
+         'willChange should be notified of one removal');
+
+  equals(didChangeArgs.start, 2,
+         'didChange removal should start at index 2');
+  equals(didChangeArgs.removed, 1,
+         'didChange should be notified of one removal');
 });
 
 test("adding range observers before setting referenceArray is ok... but returns null", function() {
