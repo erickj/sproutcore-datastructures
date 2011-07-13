@@ -245,23 +245,65 @@ test("Index length is decremented on remove", function() {
   ok(i.get('length') == 0, 'index length should be equal to zero');
 });
 
-test("Index remove does not shift references to other objects", function() {
-  var obj = {val: 'foo'},
-    obj2 = {val: 'bar'},
-    obj3 = {val: 'cuz'};
-
-  i.insert('foo', obj,obj2,obj3);
-  equals(i.get('length'), 3, 'prereq - Index +insert+ should have inserted 3 values');
+function testIndexRemovalShifts(index, objs, idxToRemove) {
+  // remove a second object, farther up
+  var nextToGo = objs[idxToRemove],
+    newLen = objs.length - 1;
 
   SC.run(function() {
-    i.remove('foo', obj);
+    index.remove('foo', nextToGo);
+    objs = objs.replace(idxToRemove,1,[]);
   });
 
-  equals(i.get('length'), 2, 'prereq - Index should have 2 values');
-  same(i.objectAt(0), obj2, 'prereq - obj2 should be at zero');
-  same(i.objectAt(1), obj3, 'prereq - obj3 should be at one');
+  equals(index.get('length'), newLen,
+         'prereq - Index should have %@ values'.fmt(newLen));
+  equals(objs.get('length'), newLen,
+         'prereq - objs should have %@ objects'.fmt(newLen));
+  equals(objs.indexOf(nextToGo), -1,
+         'prereq - the correct object was removed from objs');
 
-  var indexSet = i.indexSetForKeys('foo');
-  same(indexSet.firstObject(), 0, 'the indexSet should get the new index for obj2');
-  same(indexSet.indexAfter(0), 1, 'the indexSet should get the new index for obj3');
+  objs.forEach(function(obj,idx) {
+    same(index.objectAt(idx), obj,
+         'prereq - obj{%@} should be at %@'.fmt(obj.val,idx));
+    equals(index.indexOf(obj), idx,
+           'indexOf(obj{%@}) should be %@'.fmt(obj.val,idx));
+  });
+
+  var indexSet = index.indexSetForKeys('foo');
+  equals(indexSet.firstObject(), 0,
+         'the indexSet should start at 0');
+  equals(indexSet.get('length'), newLen,
+         'the indexSet should reference %@ objects'.fmt(newLen));
+}
+
+test("Index remove does not shift references to other objects", function() {
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  i.insert.apply(i, ['foo'].concat(objs));
+  equals(i.get('length'), objs.length,
+         'prereq - Index +insert+ should have inserted %@ values'.fmt(objs.length));
+  equals(i.indexSetForKeys('foo').get('length'),objs.length,
+         'prereq - the indexSet should reference %@ objects'.fmt(objs.length));
+
+  //
+  // remove one object
+  //
+  testIndexRemovalShifts(i, objs, 0);
+
+  //
+  // remove a second object, farther up
+  //
+  testIndexRemovalShifts(i, objs, 2);
+
+  //
+  // remove another object, in succession with the last
+  //
+  testIndexRemovalShifts(i, objs, 3);
+
+  //
+  // remove another object from a previously removed index
+  //
+  testIndexRemovalShifts(i, objs, 0);
 });
