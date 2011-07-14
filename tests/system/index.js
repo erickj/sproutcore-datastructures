@@ -36,12 +36,12 @@ test("Index is destroyable", function() {
   var iToDestroy = DataStructures.Index.create();
 
   iToDestroy.insert('foo','bar');
-  ok(iToDestroy.get('length') === 1, 'prereq - iToDestroy should have length 1');
+  ok(iToDestroy.get('indexLength') === 1, 'prereq - iToDestroy should have indexLength 1');
 
   SC.run(function() {
     iToDestroy.destroy();
   });
-  ok(iToDestroy.get('length') === 0, 'iToDestroy should have length 0');
+  ok(iToDestroy.get('indexLength') === 0, 'iToDestroy should have indexLength 0');
 
   ok(iToDestroy.get('isDestroyed'), 'Index should be destroyed');
 });
@@ -84,7 +84,7 @@ test("Index can insert values at single key", function() {
   equals(fooIndex, 0, 'fooObj should be indexed into index at position 0');
 
   same(i, res, 'Index should return itself after call to +insert+');
-  equals(i.get('length'), 1, 'Index.length should indicate the number of values in the index');
+  equals(i.get('indexLength'), 1, 'Index.indexLength should indicate the number of values in the index');
 
   ok(i.isIndexed('foo', fooObj), 'fooObj should be indexed at \'foo\'');
   ok(!i.isIndexed('foo', barObj), 'barObj should NOT be indexed at \'foo\'');
@@ -97,7 +97,7 @@ test("Index can insert values at array of keys", function() {
   // insert single value at multiple keys
   //
   i.insert(['bar','baz','fiz'],barObj);
-  equals(i.get('length'), 1, 'Index +insert+ should only have inserted 1 additional object');
+  equals(i.get('indexLength'), 1, 'Index +insert+ should only have inserted 1 additional object');
 
   ok(i.isIndexed('bar', barObj), 'barObj should be indexed at bar');
   ok(!i.isIndexed('bar', fooObj), 'fooObj should NOT be indexed at bar');
@@ -110,7 +110,7 @@ test("Index can insert values at array of keys", function() {
     cuzObj = {cuz: true};
 
   i.insert(['buz','muz','cuz'], buzObj, muzObj, cuzObj);
-  equals(i.get('length'), 4, 'Index +insert+ should have inserted 3 additional values');
+  equals(i.get('indexLength'), 4, 'Index +insert+ should have inserted 3 additional values');
 
   ok(i.isIndexed('buz', buzObj)
      && i.isIndexed('muz', buzObj)
@@ -138,7 +138,7 @@ test("Index can insert values at a KeySet", function() {
   keySet.set('keys', ['buz','muz','cuz']);
 
   i.insert(keySet, buzObj, muzObj, cuzObj);
-  equals(i.get('length'), 3, 'Index +insert+ should have inserted 3 values');
+  equals(i.get('indexLength'), 3, 'Index +insert+ should have inserted 3 values');
 
   ok(i.isIndexed('buz', buzObj)
      && i.isIndexed('muz', buzObj)
@@ -163,7 +163,7 @@ test("Index can remove a value on a single key", function() {
     cuzObj = {cuz: true};
 
   i.insert(['buz','muz','cuz'], buzObj, muzObj, cuzObj);
-  equals(i.get('length'), 3, 'prereq - Index +insert+ should have inserted 3 values');
+  equals(i.get('indexLength'), 3, 'prereq - Index +insert+ should have inserted 3 values');
 
   ['buz','muz','cuz'].forEach(function(key) {
     ok(i.isIndexed(key,buzObj), 'prereq - buzObj should be indexed at key %@'.fmt(key));
@@ -207,7 +207,7 @@ test("Index can remove a value on an array of keys", function() {
     cuzObj = {cuz: true};
 
   i.insert(['buz','muz','cuz'], buzObj, muzObj, cuzObj);
-  equals(i.get('length'), 3, 'prereq - Index +insert+ should have inserted 3 values');
+  equals(i.get('indexLength'), 3, 'prereq - Index +insert+ should have inserted 3 values');
 
   ['buz','muz','cuz'].forEach(function(key) {
     ok(i.isIndexed(key,buzObj), 'prereq - buzObj should be indexed at key %@'.fmt(key));
@@ -231,17 +231,22 @@ test("Index can remove a value on an array of keys", function() {
   });
 });
 
-test("Index length is NOT decremented on remove", function() {
+test("Index indexLength is decremented on remove", function() {
   var obj = {val: 'foo'};
   i.insert('foo', obj);
-  equals(i.get('length'), 1, 'prereq - Index +insert+ should have inserted 1 value');
+  equals(i.get('indexLength'), 1, 'prereq - Index +insert+ should have inserted 1 value');
 
   SC.run(function() {
     i.remove('foo', obj);
   });
 
   ok(!i.isIndexed('foo',obj), 'prereq - obj should not be indexed at foo');
-  ok(i.get('length') == 1, 'index length should be equal to 1');
+  ok(i.get('indexLength') == 0, 'index indexLength should be equal to 0');
+
+  // add an object back in
+  i.insert('foo', obj);
+
+  ok(i.get('indexLength') == 1, 'index indexLength should be equal to 1 after reinsert');
 });
 
 function testIndexRemovals(index, objs, idxToRemove, prefix) {
@@ -258,7 +263,9 @@ function testIndexRemovals(index, objs, idxToRemove, prefix) {
       if (cur === null) prev++;
       return prev;
     },0),
-    indexSetSize = newLen - numRemovals;
+    indexSetSize = index.get('indexLength');
+
+  equals(indexSetSize, newLen - numRemovals, "%@ prereq - indexLength should equal reference array length - numRemovals");
 
   equals(index.get('length'), newLen,
          '%@ prereq - Index should have %@ values'.fmt(prefix, newLen));
@@ -294,11 +301,9 @@ test("Index remove does not shift references to other objects", function() {
     return {val: 'value-%@'.fmt(i)};
   });
 
-  i.DEBUG_INDEX = YES;
   i.insert.apply(i, ['foo'].concat(objs));
-  i.DEBUG_INDEX = NO;
 
-  equals(i.get('length'), objs.length,
+  equals(i.get('indexLength'), objs.length,
          'prereq - Index +insert+ should have inserted %@ values'.fmt(objs.length));
   equals(i.indexSetForKeys('foo').get('length'),objs.length,
          'prereq - the indexSet should reference %@ objects'.fmt(objs.length));
@@ -306,7 +311,6 @@ test("Index remove does not shift references to other objects", function() {
   //
   // remove one object => [1,2,3,4,5,6,7,8,9]
   //
-  i.DEBUG_INDEX = YES;
   SC.Logger.group('remove at 0');
   testIndexRemovals(i, objs, 0, 'remove at 0:');
   SC.Logger.groupEnd();
@@ -323,10 +327,5 @@ test("Index remove does not shift references to other objects", function() {
   //
   SC.Logger.group('remove at 3');
   testIndexRemovals(i, objs, 3, 'remove at 3:');
-  i.DEBUG_INDEX = NO;
   SC.Logger.groupEnd();
-});
-
-test("Index does reuse empty slots left by removals", function() {
-
 });

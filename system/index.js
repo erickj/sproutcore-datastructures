@@ -61,7 +61,6 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     delete this._valueList;
     delete this._valueMap;
     delete this._nextInsertionPoint;
-
     this.set('length', 0);
     return sc_super();
   },
@@ -76,6 +75,18 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       .trim()
       .replace(/([^a-z0-9])/g,'');
   },
+
+  /**
+   * The number of unique values in the index.  This property should
+   * be used instead of _length_ to determine the number of items in
+   * the index.
+   */
+  indexLength: function() {
+    // _nextInsertionPoint is length zero when there are NO holes to
+    // fill in from removals
+    var removals = this._nextInsertionPoint && this._nextInsertionPoint.length || 0;
+    return this.get('length') - removals;
+  }.property('{}'),
 
   /**
    * Indicates if val is indexed at any of the named keys
@@ -268,14 +279,16 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   },
 
   /**
+   * Take Notice:
+   *
    * Begin array implementation.  The arrayness of an index should be
-   * considered private.  This is simple being done as a poor man's
-   * array proxy for _valueList
-   */
-
-  /**
-   * nobody outside of this class should ever be calling +replace+
-   * consider this private!
+   * considered private.  This is being done as a poor man's array
+   * proxy for _valueList
+   *
+   * Consider this implmentation private! DO NOT USE THE ARRAY
+   * FUNCTIONS, you probably won't get the results you
+   * expect... especially the length property!!!  Calling +replace+
+   * will just totally F things up. DONT DO IT.
    */
   replace: function(start,rmv,objs) {
     // remove objs from fast lookup map
@@ -316,7 +329,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   }
 
   /**
-   * end array implementation
+   * end PRIVATE array implementation
    */
 });
 

@@ -81,7 +81,7 @@ test("Index willChange/didChange fires on inserting a single object", function()
     i.insert('foo',obj);
   });
 
-  ok(i.get('length') == 1, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 1, 'prereq - index should have indexLength 1');
 
   ok(observer.willChangeCount == 1, 'willChange should fire once');
   testIndexObserverFired(observer.willChangeArgs[0], keySet, 1, 0, 'single-insert/willChange: ');
@@ -99,7 +99,7 @@ test("Index willChange/didChange fires on adding multiple object", function() {
     i.insert(keySet,obj,obj2);
   });
 
-  ok(i.get('length') == 2, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 2, 'prereq - index should have indexLength 1');
 
   ok(observer.willChangeCount == 1, 'willChange should fire once');
   testIndexObserverFired(observer.willChangeArgs[0], keySet, 2, 0, 'multi-insert/willChange: ');
@@ -115,14 +115,14 @@ test("Index willChange/didChange fires on removing a single object", function() 
     i.insert('foo',obj);
   });
 
-  ok(i.get('length') == 1, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 1, 'prereq - index should have indexLength 1');
 
   var observer = setupIndexObservers(i);
   SC.run(function() {
     i.remove('foo',obj);
   });
 
-  ok(i.get('length') == 0, 'prereq - index should have length 0');
+  ok(i.get('indexLength') == 0, 'prereq - index should have indexLength 0');
 
   ok(observer.willChangeCount == 1, 'willChange should fire once');
   testIndexObserverFired(observer.willChangeArgs[0], keySet, 0, 1, 'single-remove/willChange: ');
@@ -138,14 +138,14 @@ test("Index willChange/didChange fires on removing multiple object", function() 
     i.insert(keySet,obj,obj2);
   });
 
-  ok(i.get('length') == 2, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 2, 'prereq - index should have indexLength 1');
 
   var observer = setupIndexObservers(i);
   SC.run(function() {
     i.remove(keySet,obj,obj2);
   });
 
-  ok(i.get('length') == 0, 'prereq - index should have length 0');
+  ok(i.get('indexLength') == 0, 'prereq - index should have indexLength 0');
 
   ok(observer.willChangeCount == 1, 'willChange should fire once');
   testIndexObserverFired(observer.willChangeArgs[0], keySet, 0, 2, 'multi-remove/willChange: ');
@@ -167,7 +167,7 @@ test("Index willChange/didChange notifies multiple observers", function() {
     i.insert('foo',obj);
   });
 
-  ok(i.get('length') == 1, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 1, 'prereq - index should have indexLength 1');
 
   ok(observer1.willChangeCount == 1, 'willChange should fire once for observer1');
   ok(observer1.didChangeCount == 1, 'didChange should fire once for observer1');
@@ -178,7 +178,7 @@ test("Index willChange/didChange notifies multiple observers", function() {
     i.remove('foo',obj);
   });
 
-  ok(i.get('length') == 0, 'prereq - index should have length 0');
+  ok(i.get('indexLength') == 0, 'prereq - index should have indexLength 0');
 
   ok(observer1.willChangeCount == 2, 'willChange should fire again for observer1');
   ok(observer1.didChangeCount == 2, 'didChange should fire again for observer1');
@@ -204,7 +204,7 @@ test("Index willChange/didChange observers can be removed", function() {
     i.insert('foo',obj);
   });
 
-  ok(i.get('length') == 1, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 1, 'prereq - index should have indexLength 1');
 
   ok(observer1.willChangeCount == 1, 'willChange should fire once for observer1');
   ok(observer1.didChangeCount == 1, 'didChange should fire once for observer1');
@@ -220,7 +220,7 @@ test("Index willChange/didChange observers can be removed", function() {
     i.remove('foo',obj);
   });
 
-  ok(i.get('length') == 0, 'prereq - index should have length 0');
+  ok(i.get('indexLength') == 0, 'prereq - index should have indexLength 0');
 
   ok(observer1.willChangeCount == 1, 'willChange should NOT fire for observer1');
   ok(observer1.didChangeCount == 1, 'didChange should NOT fire for observer1');

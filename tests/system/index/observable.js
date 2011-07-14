@@ -50,8 +50,8 @@ function setupIndexPropertyObserver(index) {
 function testIndexPropertyObserverFired(observer, firedCount, expectedLen) {
   var index = observer.index;
 
-  ok(index.get('length') == expectedLen,
-    'prereq - index should have length %@'.fmt(expectedLen));
+  ok(index.get('indexLength') == expectedLen,
+    'prereq - index should have indexLength %@'.fmt(expectedLen));
 
   equals(observer.callCount, firedCount,
          'observer should have been notified of %@ change to {}'.fmt(firedCount));
@@ -81,7 +81,7 @@ test("Index does update property {} on multiple insert only once", function() {
   SC.run(function() {
     i.insert(['foo','bar','baz'],objs[0],objs[1],objs[2]);
   });
-  ok(i.get('length') == 3, 'prereq - index should have length 3');
+  ok(i.get('indexLength') == 3, 'prereq - index should have indexLength 3');
 
   testIndexPropertyObserverFired(observer, 1, 3);
 });
@@ -92,7 +92,7 @@ test("Index does update property {} on remove", function() {
     i.insert('foo',obj);
   });
 
-  ok(i.get('length') == 1, 'prereq - index should have length 1');
+  ok(i.get('indexLength') == 1, 'prereq - index should have indexLength 1');
 
   var observer = setupIndexPropertyObserver(i);
   SC.run(function() {
@@ -113,7 +113,7 @@ test("Index does update property {} on multiple remove only once", function() {
   SC.run(function() {
     i.insert(['foo','bar','baz'],objs[0],objs[1],objs[2]);
   });
-  ok(i.get('length') == 3, 'prereq - index should have length 3');
+  ok(i.get('indexLength') == 3, 'prereq - index should have indexLength 3');
 
   var observer = setupIndexPropertyObserver(i);
   SC.run(function() {
