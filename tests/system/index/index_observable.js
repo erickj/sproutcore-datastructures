@@ -59,7 +59,7 @@ function setupIndexObservers(index) {
   };
   observer.options = observerOptions;
 
-  index.addIndexObsever(observerOptions);
+  index.addIndexObserver(observerOptions);
 
   return observer;
 }
@@ -198,7 +198,7 @@ test("Index willChange/didChange observers can be removed", function() {
     keySet = DS.Index.KeySet.create().addKeys('foo');
 
   // remove observer3 immediately
-  i.removeIndexObsever(observer3.options);
+  i.removeIndexObserver(observer3.options);
 
   SC.run(function() {
     i.insert('foo',obj);
@@ -214,7 +214,7 @@ test("Index willChange/didChange observers can be removed", function() {
   ok(observer3.didChangeCount == 0, 'didChange should NOT fire for observer3');
 
   // remove observer1 before remove
-  i.removeIndexObsever(observer1.options);
+  i.removeIndexObserver(observer1.options);
 
   SC.run(function() {
     i.remove('foo',obj);

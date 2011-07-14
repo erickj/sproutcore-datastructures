@@ -31,9 +31,6 @@
  * queried KeySet have changed, then bthe Index.ResultSet object will
  * automatically be updated via KVO.
  */
-DataStructures.INDEX_INSERTION_EXCEPTION = "No insertions allowed on an index";
-DataStructures.INDEX_REPLACE_EXCEPTION = "No replacing values in an index";
-
 DataStructures.Index = SC.Object.extend(SC.Array, {
   DEBUG_INDEX: NO,
 
@@ -129,6 +126,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   /**
    * @param {Mixed} - a single key, an array of keys, or a KeySet
    * @param {Object} - a value object to insert
+   * @return {DataStructures.Index}
    */
   insert: function(keys, val /* val2,val3,valN */) {
     this._insertValuesAtKeys.apply(this,arguments);
@@ -138,6 +136,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   /**
    * @param {Mixed} - a single key, an array of keys, or a KeySet
    * @param {Object} - a value object to insert
+   * @return {DataStructures.Index}
    */
   remove: function(keys, val /* val2,val3,valN */) {
     this._removeValuesAtKeys.apply(this,arguments);
@@ -284,7 +283,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * Consider this implmentation private! DO NOT USE THE ARRAY
    * FUNCTIONS, you probably won't get the results you
    * expect... especially the length property!!!  Calling +replace+
-   * will just totally F things up. DONT DO IT.
+   * will just totally F things up. DONT DO IT. YOU'VE BEEN WARNED!
    */
   replace: function(start,rmv,objs) {
     // remove objs from fast lookup map
@@ -325,7 +324,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   }
 
   /**
-   * end PRIVATE array implementation
+   * end PRIVATE array implementation.  Remember - don't use the array API
    */
 });
 
@@ -372,11 +371,11 @@ DataStructures.Index = DataStructures.Index.extend({
    *
    * @param options {Object}
    */
-  addIndexObsever: function(options) {
+  addIndexObserver: function(options) {
     this._modifyObserverSet('add', options);
   },
 
-  removeIndexObsever: function(options) {
+  removeIndexObserver: function(options) {
     this._modifyObserverSet('remove', options);
   },
 
