@@ -28,6 +28,11 @@ module("DataStructures.NormalKeyIndex", {
   }
 });
 
+test("NormalKeyIndex is a...", function() {
+  ok(n.get('isIndex'), "SubstringHash should be an index");
+  ok(n.get('isNormalKeyIndex'), "SubstringHash should be a normal key index");
+});
+
 test("NormalKeyIndex does normalize keys", function() {
   var keyResultPairs = {
     "Bob": "bob",

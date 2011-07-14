@@ -21,6 +21,8 @@ sc_require('system/index');
  *   "  Wasted Space  " => "wastedspace"
  */
 DataStructures.NormalKeyIndex = DataStructures.Index.extend({
+  isNormalKeyIndex: YES,
+
   keyTransform: function(key) {
     return key
       .toString()
