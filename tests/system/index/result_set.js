@@ -225,3 +225,48 @@ test("Index.ResultSet can receive values from multiple key sets", function() {
     ok(resultSet.contains(val), "%@ is in resultSet".fmt(val));
   });
 });
+
+test("Index.ResultSet updates it's own enumerable property when changes occur", function() {
+  var count = 0;
+  var observer = SC.Object.create({
+    resultSet: resultSet,
+    _enumDidChange: function() {
+      count++;
+    }.observes('.resultSet.[]')
+  });
+
+  equals(count, 0, 'prereq - count should be 0');
+  loadResultSet(resultSet,key,index);
+  ok(count >= 1, 'count should be >= 1 after loading index');
+
+  var base = count;
+
+  //
+  // insertions
+  //
+  var relevantObj = SC.Object.create({value: '?'}),
+    irrelevantObj = SC.Object.create({value: 'bVal ?'});
+  SC.run(function() {
+    index.insert(key, relevantObj);
+  });
+  equals(count, base+1, 'count should be base+1 after an applicable index insert');
+
+  SC.run(function() {
+    index.insert(bKey, irrelevantObj);
+  });
+  equals(count, base+1, 'count should STILL be base+1 after an irrelevant index insert');
+
+  //
+  // removals
+  //
+  SC.run(function() {
+    index.remove(key, relevantObj);
+  });
+  equals(count, base+2, 'count should be base+2 after an applicable index remove');
+
+  SC.run(function() {
+    index.remove(bKey, irrelevantObj);
+  });
+  equals(count, base+2, 'count should STILL be base+2 after an irrelevant index remove');
+
+});

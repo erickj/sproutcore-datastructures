@@ -1,7 +1,17 @@
 sc_require('system/index');
 sc_require('sysetm/query_array');
 
-DataStructures.Index.ResultSet = SC.Object.extend(
+/**
+ * ResultSet
+ *
+ * A ResultSet is the return of a query for values at a key or KeySet
+ * in an index by using the +lookup+ function.  ResultSet
+ * automatically subscribe to the didChange/willChange callbacks on
+ * the index to watch all changes in the index.  when a change occurs
+ * that affects one of its key set values then the ResultSet updates
+ * its IndexSet by requerying the index for an updated version.
+ */
+DataStructures.Index.ResultSet = SC.Object.extend(SC.Array,
   /* DataStructures.Index.ResultSet.prototype */ {
 
   isResultSet: YES,
@@ -69,11 +79,13 @@ DataStructures.Index.ResultSet = SC.Object.extend(
     if (intersection && intersection.length) {
       this.notifyPropertyChange('index');
     }
-  }
-});
+  },
 
-DataStructures.Index.ResultSet = DataStructures.Index.ResultSet.extend(SC.Array,
-  /* DataStructures.Index.ResultSet.prototype */ {
+  /* SC.Array.prototype overrides */
+  '[]': function() {
+    return this;
+  }.property('indexSet'),
+
   length: function() {
     return this.getPath('indexSet.length') || 0;
   }.property('[]'),
