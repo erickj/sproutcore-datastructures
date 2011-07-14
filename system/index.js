@@ -69,11 +69,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * implementations should define their own keyTransform
    */
   keyTransform: function(key) {
-    return key
-      .toString()
-      .toLowerCase()
-      .trim()
-      .replace(/([^a-z0-9])/g,'');
+    return key; // wysiwyg keys
   },
 
   /**
