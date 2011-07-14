@@ -46,6 +46,26 @@ test("Index is destroyable", function() {
   ok(iToDestroy.get('isDestroyed'), 'Index should be destroyed');
 });
 
+test("Index does transform keys", function() {
+  var transformIndex = Klass.create({
+    keyTransform: function(key) {
+      return key && key[0];
+    }
+  });
+
+  var fooObj = { val: 'foo' },
+    keys = ['foo','bar','zab'];
+
+  transformIndex.insert(keys, fooObj);
+
+  keys.forEach(function(k) {
+    ok(transformIndex.isIndexed(k, fooObj),
+      'fooObj should look like it\'s indexed at %@ - but its really indexed at the transform value %@'.fmt(k,k[0]));
+    ok(transformIndex.isIndexed(k[0], fooObj),
+      'fooObj should be indexed at %@'.fmt(k[0]));
+  });
+});
+
 test("Index can tell if a value is indexed at a key", function() {
   var fooObj = { val: 'foo' },
     barObj =  { val: 'bar' };

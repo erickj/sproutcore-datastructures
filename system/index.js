@@ -41,6 +41,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     this._reverseKeyMap = {}; // hashFor(obj) => [key, key, key] }
     this._valueList = [];     // [obj,obj,obj]
     this._valueMap = {};      // { hashFor(obj) => idx }
+    this._keyTransformCache = {}; // { key => transformedKey }
 
     // removing objects from the value map is dealt with by replacing
     // with [null], this way we don't shift the indices of other
@@ -58,6 +59,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     delete this._valueList;
     delete this._valueMap;
     delete this._nextInsertionPoint;
+    delete this._keyTransformCache;
     this.set('length', 0);
     return sc_super();
   },
@@ -149,10 +151,14 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   _keySetForKey: function(key) {
     var keySet = key.isKeySet ? key : DS.Index.KeySet.create().set('keys',key),
       keys = keySet.get('keys').map(function(key) {
-        return this.keyTransform(key);
+        if (this._keyTransformCache[key]) {
+          return this._keyTransformCache[key];
+        }
+        this._keyTransformCache[key] = this.keyTransform(key);
+        return this._keyTransformCache[key];
       },this);
 
-    return keySet.set('keys',key);
+    return keySet.set('keys',keys);
   },
 
   /**
