@@ -270,3 +270,47 @@ test("Index.ResultSet updates it's own enumerable property when changes occur", 
   equals(count, base+2, 'count should STILL be base+2 after an irrelevant index remove');
 
 });
+
+test("Index.ResultSet do index set lookups with doKeyTransform property", function() {
+  var tIndex = DataStructures.Index.create({
+    keyTransform: function(key) {
+      var ret = DS.Index.KeySet.create();
+      for (var i=0,l=key.length;i<l;i++) {
+        ret.addKeys(key[i]);
+      }
+      return ret;
+    }
+  });
+
+  tIndex.insert.apply(tIndex,[key].concat(values));
+
+  equals(tIndex.get('indexLength'), values.length,
+         'prereq - tIndex should have inserted values');
+  ['f','o'].forEach(function(l) {
+    ok(tIndex.isIndexed(l,values[0]), 'prereq - value should be indexed at \'%@\''.fmt(l));
+  });
+
+  ok(!tIndex.isIndexed('foo',values[0]), 'prereq - value should NOT be indexed at \'%@\''.fmt('foo'));
+
+  var rs = Klass.create({
+    doKeyTransform: NO
+  });
+
+  ok(!rs.get('doKeyTransform'), 'doKeyTransform should be false');
+
+  loadResultSet(rs, key, tIndex);
+
+  equals(rs.get('length'), 0, 'ResultSet should NOT have results for key %@'.fmt(key));
+
+  //
+  // modifiying doKeyTransform updaets the result set
+  //
+  SC.run(function() {
+    rs.set('doKeyTransform', YES);
+  });
+
+  ok(rs.get('doKeyTransform'), 'doKeyTransform should be true');
+
+  equals(rs.get('length'), values.length,
+         'ResultSet should have %@ result for key %@'.fmt(key,values.length));
+});

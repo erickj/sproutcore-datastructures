@@ -46,9 +46,9 @@ test("Index is destroyable", function() {
   ok(iToDestroy.get('isDestroyed'), 'Index should be destroyed');
 });
 
-test("Index does transform keys via +keyTransform+", function() {
+test("Index does transform keys via +keyNormalize+", function() {
   var transformIndex = Klass.create({
-    keyTransform: function(key) {
+    keyNormalize: function(key) {
       return key && key[0];
     }
   });
@@ -73,6 +73,7 @@ test("Index does allow multiplexing key inserts via +keyTransform+", function() 
       for(var i=0;i<key.length;i++) {
         ret.push(key[i]);
       }
+      return ret;
     }
   });
 
@@ -82,15 +83,63 @@ test("Index does allow multiplexing key inserts via +keyTransform+", function() 
   transformIndex.insert(keys, fooObj);
 
   keys.forEach(function(k) {
-    ok(transformIndex.isIndexed(k, fooObj),
-      'fooObj should look like it\'s indexed at \'%@\' - but its really indexed at the transform values'.fmt(k));
-
     for(var i=0;i<k.length;i++) {
       ok(transformIndex.isIndexed(k[i], fooObj),
         'fooObj should be multiplexed into index at \'%@\''.fmt(k[i]));
     }
   });
 });
+
+test("Index does allow enabling/disabling +keyTransform+", function() {
+  var transformIndex = Klass.create({
+    keyTransform: function(key) {
+      var ret = [];
+      for(var i=0;i<key.length;i++) {
+        ret.push(key[i]);
+      }
+      return ret;
+    }
+  });
+
+  var fooObj = { val: 'foo' },
+    keys = ['foo','bar'];
+
+  transformIndex.insert(keys, fooObj);
+
+  keys.forEach(function(k) {
+    for(var i=0;i<k.length;i++) {
+      ok(transformIndex.isIndexed(k[i], fooObj),
+        'prereq - fooObj should be multiplexed into index at \'%@\''.fmt(k[i]));
+    }
+
+    ok(!transformIndex.isIndexed(k, fooObj),
+      'by default fooObj should NOT be indexed at \'%@\''.fmt(k));
+    ok(transformIndex.isIndexed(k, fooObj, true),
+      'fooObj should look like it\'s indexed at \'%@\' - but its really indexed at the transform values'.fmt(k));
+  });
+});
+
+test("Index does not mutate key during a index/normalize/transform", function() {
+  var transformIndex = Klass.create({
+    keyTransform: function(key) {
+      var ret = DS.Index.KeySet.create();
+      for(var i=0;i<key.length;i++) {
+        ret.addKeys(key[i]);
+      }
+      return ret;
+    }
+  });
+
+  var fooObj = { val: 'foo' },
+    keys = ['foo','bar'];
+
+  keys.fooID = "test!";
+  transformIndex.insert(keys, fooObj);
+
+  ok(keys.fooID == "test!" && ['foo','bar'].isEqual(keys),
+     "keys should not be modified after insert");
+});
+
 
 test("Index can tell if a value is indexed at a key", function() {
   var fooObj = { val: 'foo' },
@@ -409,4 +458,18 @@ test("Index lookups do return ResultSets", function() {
 
   equals(result.get('length'),objs.length,
          'result should have %@ values'.fmt(objs.length));
+});
+
+test("Index lookups do set _doKeyTransform_ on ResultSets", function() {
+  var resultDefault = i.lookup('foo');
+  ok(!resultDefault.get('doKeyTransform'),
+    'resultDefault set should have doKeyTransform disabled by default');
+
+  var resultDisabled = i.lookup('foo',false);
+  ok(!resultDisabled.get('doKeyTransform'),
+    'resultDisabled set should have doKeyTransform disabled');
+
+  var resultEnabled = i.lookup('foo',true);
+  ok(resultEnabled.get('doKeyTransform'),
+    'resultEnabled set should have doKeyTransform enabled');
 });

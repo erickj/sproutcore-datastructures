@@ -1,11 +1,11 @@
 sc_require('system/index');
-sc_require('sysetm/query_array');
+sc_require('system/query_array');
 
 /**
  * ResultSet
  *
  * A ResultSet is the return of a query for values at a key or KeySet
- * in an index by using the +lookup+ function.  ResultSet
+ * in an index by using the +DS.Index.lookup+ function.  ResultSet
  * automatically subscribe to the didChange/willChange callbacks on
  * the index to watch all changes in the index.  when a change occurs
  * that affects one of its key set values then the ResultSet updates
@@ -23,11 +23,15 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.Array,
     var index = this.get('index');
     if (!index) return null;
 
-    var set = index.indexSetForKeys(this.get('keySet'));
+    var doKeyTransform = this.get('doKeyTransform');
+    var set = index.indexSetForKeys(this.get('keySet'), doKeyTransform);
     set.source = index;
 
     return set;
-  }.property('keySet', 'index').cacheable(),
+  }.property('keySet', 'index', 'doKeyTransform').cacheable(),
+
+  // you probably just want to leave this alone
+  doKeyTransform: NO,
 
   init: function() {
     if (this.get('index') || this.get('keySet')) {

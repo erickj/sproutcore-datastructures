@@ -65,9 +65,39 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   },
 
   /**
-   * implementations should define their own keyTransform
+   * Not intended to be called publicly, instead this is meant to be
+   * overriden in a subclass
+   *
+   * Key transforms are intended to give control over additional
+   * indexing that should be done on addition and removal of a single
+   * key.  For instance when an insert to "foo bar" comes in, you may
+   * want that to result in indexing on keys "foo" and "bar" as well.
+   * If that were the case then return:
+   *
+   *  ["foo", "bar", "foo bar"]
+   *
+   * Implementations can define their own keyTransform.  A general
+   * rule of thumb is:
+   *
+   * KEY TRANSFORM RESULTS SHOULD INCLUDE THE ORIGINAL KEY.
+   *
+   * @see {_keySetForKey} for more information about this rule of thumb
+   *
+   * @param {String}
+   * @return {String}, {Array}, or {DS.Index.KeySet}
    */
   keyTransform: function(key) {
+    return key; // wysiwyg keys
+  },
+
+  /**
+   * Not intended to be called publicly, instead this is meant to be
+   * overriden in a subclass
+   *
+   * @param {String}
+   * @return {String}
+   */
+  keyNormalize: function(key) {
     return key; // wysiwyg keys
   },
 
@@ -85,12 +115,18 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
   /**
    * Indicates if val is indexed at any of the named keys
-   * @param {String} {Array} or {DS.KeySet}
+   *
+   * @see {_keySetForKey} for more information about doTransform
+   *
+   * @param {String} {Array} or {DS.Index.KeySet}
    * @param {Mixed}
+   * @param {Boolean}
    * @return {Boolean}
    */
-  isIndexed: function(key, val) {
-    var indexKeySet = this.indexSetForKeys(key),
+  isIndexed: function(key, val, doTransform) {
+    doTransform = SC.none(doTransform) ? false : !!doTransform;
+
+    var indexKeySet = this.indexSetForKeys(key, doTransform),
       indexOfVal = this.indexOf(val);
 
     if (indexOfVal < 0) return false;
@@ -100,11 +136,17 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   },
 
   /**
-   * @param {String}, {Array}, or {DS.KeySet}
+   *
+   * @see {_keySetForKey} for more information about doTransform
+   *
+   * @param {String}, {Array}, or {DS.Index.KeySet}
+   * @param {Boolean}
    * @return {SC.IndexSet}
    */
-  indexSetForKeys: function(keys) {
-    var keySet = this._keySetForKey(keys),
+  indexSetForKeys: function(keys, doTransform) {
+    doTransform = SC.none(doTransform) ? false : !!doTransform;
+
+    var keySet = this._keySetForKey(keys, doTransform),
       lenKeys = keySet.get('length'),
       indexSetForKey;
 
@@ -119,9 +161,13 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   },
 
   /**
+   *
+   * @see {_keySetForKey} for more information about doTransform
+   *
+   * @param {String}, {Array} or {DS.Index.KeySet}
    * @return {DataStructures.Index.ResultSet}
    */
-  lookup: function(keys) {
+  lookup: function(keys, doTransform) {
     return this._lookup.apply(this, arguments);
   },
 
@@ -147,18 +193,67 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
   /**
    * @private
+   *
+   * Build a normalized/transformed key set from the passed in String,
+   * Array, or KeySet.  There is one tricky bit here and that is the
+   * doTransform parameter.  Generally... just don't touch it,
+   * anywhere.  There is a general rule of thumb that here; that is,
+   * any KEY TRANSFORM RESULTS SHOULD INCLUDE THE ORIGINAL KEY.
+   *
+   * Here's a scenario to explain what doTransform is for... let's say
+   * you implement an Index that performs the following key
+   * transforms:
+   *
+   *  key "foo-bar" => ["foo-bar", "foo", "bar"]
+   *  key "bar-baz" => ["bar-baz", "bar", "baz"]
+   *
+   * So that when you insert value X, at key "foo-bar",
+   * doTransform=YES will also index X at "foo" and "bar".  Likewise
+   * value Y inserted at key "bar-baz" will also index into keys "bar"
+   * and "baz".
+   *
+   * Now the tricky bit, when I go to lookup key "foo-bar"; if I
+   * allowed the transform to happen then I would actually be looking
+   * up the KeySet ["foo-bar", "foo", "bar"].  This would yield values
+   * [X,Y] because both X and Y are indexed at key "bar".  That
+   * behavior is most likely NOT what you want.  This is why index
+   * modifying functions (insert and remove) default to
+   * doTransform=YES, and index read functions default to NO.  To
+   * reiterate, you can pretty much just ignore doTransform unless you
+   * have a specific reason not to.
+   *
+   * Now back to that rule of thumb from above, KEY TRANSFORM RESULTS
+   * SHOULD INCLUDE THE ORIGINAL KEY.  The reason for this is that
+   * when doTransform is NO, unless the "foo-bar" transform includes
+   * "foo-bar" in the result set, then lookups on the key "foo-bar"
+   * will return no results.
+   *
+   * @param {String}, {Array}, or {DS.Index.KeySet}
+   * @param {Boolean}
+   * @return {DS.Index.KeySet}
    */
-  _keySetForKey: function(key) {
-    var keySet = key.isKeySet ? key : DS.Index.KeySet.create().set('keys',key),
-      keys = keySet.get('keys').map(function(key) {
-        if (this._keyTransformCache[key]) {
-          return this._keyTransformCache[key];
-        }
-        this._keyTransformCache[key] = this.keyTransform(key);
-        return this._keyTransformCache[key];
-      },this);
+  _keySetForKey: function(key,doTransform) {
+    doTransform = SC.none(doTransform) ? true : !!doTransform;
 
-    return keySet.set('keys',keys.flatten());
+    var keySet = DS.Index.KeySet.create().set('keys',key),
+      cacheKeyTpl = doTransform ? "<#tranform:%@>" : "<#no-transform:%@>",
+      retKeys = [],
+      cacheKey,curKey;
+
+    for(var i=0,l=keySet.get('length');i<l;i++) {
+      curKey = keySet.objectAt(i);
+      cacheKey = cacheKeyTpl.fmt(curKey);
+
+      if (!this._keyTransformCache[cacheKey]) {
+        curKey = this.keyNormalize(curKey); // always want to normalize
+        curKey = doTransform ? this.keyTransform(curKey) : curKey;
+        this._keyTransformCache[cacheKey] = curKey;
+      }
+
+      retKeys.push(this._keyTransformCache[cacheKey]);
+    }
+
+    return keySet.set('keys',retKeys);
   },
 
   /**
@@ -174,10 +269,13 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   /**
    * @private
    */
-  _lookup: function(key) {
+  _lookup: function(key, doTransform) {
+    doTransform = SC.none(doTransform) ? false : !!doTransform;
+
     return DataStructures.Index.ResultSet.create({
       index: this,
-      keySet: this._keySetForKey(key)
+      keySet: this._keySetForKey(key,doTransform),
+      doKeyTransform: doTransform
     });
   },
 
@@ -185,11 +283,11 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * @private
    */
   _insertValuesAtKeys: function(keys,val) {
-    var vals = SC.A(arguments).slice(1);
+    var vals = SC.A(arguments).slice(1),
+      keySet = this._keySetForKey(keys,true);
 
     vals.forEach(function(val) {
-      var keySet = this._keySetForKey(keys),
-        hashForVal = SC.hashFor(val),
+        var hashForVal = SC.hashFor(val),
         idx = this._insertValue(val),
         idxSet;
 
@@ -227,11 +325,11 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * @private
    */
   _removeValuesAtKeys: function(keys,val) {
-    var vals = SC.A(arguments).slice(1);
+    var vals = SC.A(arguments).slice(1),
+      keySet = this._keySetForKey(keys,true);
 
     vals.forEach(function(val) {
-      var keySet = this._keySetForKey(keys),
-        hashForVal = SC.hashFor(val),
+        var hashForVal = SC.hashFor(val),
         idx = this.indexOf(val);
 
       if (idx < 0) return;
