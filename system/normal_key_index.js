@@ -23,7 +23,7 @@ sc_require('system/index');
 DataStructures.NormalKeyIndex = DataStructures.Index.extend({
   isNormalKeyIndex: YES,
 
-  keyTransform: function(key) {
+  keyNormalize: function(key) {
     return key
       .toString()
       .toLowerCase()

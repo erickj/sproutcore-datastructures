@@ -70,6 +70,7 @@ test("SubstringHash can constrain max index on substrings", function() {
   // not actually indexed on bob, bobo or fobo, but that's the price
   // to pay for short max's
   ["bob","bobo","fobo"].forEach(function(sub) {
-    ok(h.isIndexed(sub,bob), "bob appears to be indexed on \'%@\'".fmt(sub));
+    ok(!h.isIndexed(sub,bob),
+       "bob should NOT appear to be indexed on \'%@\', a string that would generate matching substrings".fmt(sub));
   });
 });

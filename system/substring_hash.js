@@ -29,7 +29,6 @@ DataStructures.SubstringHash = DataStructures.NormalKeyIndex.extend({
   isSubstringHash: YES,
 
   keyTransform: function(key) {
-    var normalForm = sc_super();
-    return normalForm.substrings(this.get('keyMin'), this.get('keyMax'));
+    return key.substrings(this.get('keyMin'), this.get('keyMax'));
   }
 });
