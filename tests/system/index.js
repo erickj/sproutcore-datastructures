@@ -46,7 +46,7 @@ test("Index is destroyable", function() {
   ok(iToDestroy.get('isDestroyed'), 'Index should be destroyed');
 });
 
-test("Index does transform keys", function() {
+test("Index does transform keys via +keyTransform+", function() {
   var transformIndex = Klass.create({
     keyTransform: function(key) {
       return key && key[0];
@@ -60,9 +60,35 @@ test("Index does transform keys", function() {
 
   keys.forEach(function(k) {
     ok(transformIndex.isIndexed(k, fooObj),
-      'fooObj should look like it\'s indexed at %@ - but its really indexed at the transform value %@'.fmt(k,k[0]));
+      'fooObj should look like it\'s indexed at \'%@\' - but its really indexed at the transform value \'%@\''.fmt(k,k[0]));
     ok(transformIndex.isIndexed(k[0], fooObj),
-      'fooObj should be indexed at %@'.fmt(k[0]));
+      'fooObj should be indexed at \'%@\''.fmt(k[0]));
+  });
+});
+
+test("Index does allow multiplexing key inserts via +keyTransform+", function() {
+  var transformIndex = Klass.create({
+    keyTransform: function(key) {
+      var ret = [];
+      for(var i=0;i<key.length;i++) {
+        ret.push(key[i]);
+      }
+    }
+  });
+
+  var fooObj = { val: 'foo' },
+    keys = ['foo','bar'];
+
+  transformIndex.insert(keys, fooObj);
+
+  keys.forEach(function(k) {
+    ok(transformIndex.isIndexed(k, fooObj),
+      'fooObj should look like it\'s indexed at \'%@\' - but its really indexed at the transform values'.fmt(k));
+
+    for(var i=0;i<k.length;i++) {
+      ok(transformIndex.isIndexed(k[i], fooObj),
+        'fooObj should be multiplexed into index at \'%@\''.fmt(k[i]));
+    }
   });
 });
 

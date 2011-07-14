@@ -158,7 +158,17 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
         return this._keyTransformCache[key];
       },this);
 
-    return keySet.set('keys',keys);
+    return keySet.set('keys',keys.flatten());
+  },
+
+  /**
+   * @private
+   * if for some reason your subclass needs to clear the key transform
+   * cache you can use this function.
+   */
+  _clearKeyTransformCache: function() {
+    delete this._keyTransformCache;
+    this._keyTransformCache = {};
   },
 
   /**
