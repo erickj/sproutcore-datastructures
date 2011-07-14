@@ -158,6 +158,16 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   /**
    * @private
    */
+  _lookup: function(key) {
+    return DataStructures.Index.ResultSet.create({
+      index: this,
+      keySet: this._keySetForKey(key)
+    });
+  },
+
+  /**
+   * @private
+   */
   _insertValuesAtKeys: function(keys,val) {
     var vals = SC.A(arguments).slice(1);
 

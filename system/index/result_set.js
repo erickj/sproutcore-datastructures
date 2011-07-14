@@ -1,18 +1,29 @@
 sc_require('system/index');
 sc_require('sysetm/query_array');
 
-DataStructures.Index.ResultSet = DataStructures.QueryArray.extend(
+DataStructures.Index.ResultSet = SC.Object.extend(
   /* DataStructures.Index.ResultSet.prototype */ {
+
+  isResultSet: YES,
+
   keySet: null,
   index: null,
 
-  _values: null,
-
   indexSet: function() {
-    var index = this.get('index'),
-      keys = this.get('keySet');
-    return index && keys && index.indexSetForKeys(keys);
+    var index = this.get('index');
+    if (!index) return null;
+
+    var set = index.indexSetForKeys(this.get('keySet'));
+    set.source = index;
+
+    return set;
   }.property('keySet', 'index').cacheable(),
+
+  init: function() {
+    if (this.get('index') || this.get('keySet')) {
+      this.notifyPropertyChange('*');
+    }
+  },
 
   _keySetDidChange: function() {
     this.notifyPropertyChange('keySet');
@@ -41,8 +52,8 @@ DataStructures.Index.ResultSet = DataStructures.QueryArray.extend(
     if (i) {
       i.addIndexObserver({
         target: this,
-        indexWillChange: '_indexWillChange',
-        indexDidChange: '_indexDidChange'
+        willChange: '_indexWillChange',
+        didChange: '_indexDidChange'
       });
       this._cachedIndex = i;
     }
@@ -55,10 +66,32 @@ DataStructures.Index.ResultSet = DataStructures.QueryArray.extend(
   _indexDidChange: function(keySet, removed, added) {
     var intersection = keySet.intersection(this.get('keySet'));
 
-    if (!(intersection && intersection.length)) {
-      return;
+    if (intersection && intersection.length) {
+      this.notifyPropertyChange('index');
     }
+  }
+});
 
-    this.notifyPropertyChange('referenceArray');
+DataStructures.Index.ResultSet = DataStructures.Index.ResultSet.extend(SC.Array,
+  /* DataStructures.Index.ResultSet.prototype */ {
+  length: function() {
+    return this.getPath('indexSet.length') || 0;
+  }.property('[]'),
+
+  objectAt: function(idx) {
+    var indexSet = this.get('indexSet'),
+      index = this.get('indexSet');
+
+    if (!indexSet || !index) return undefined;
+
+    var innerIdx = index.firstObject();
+    while(idx--) {
+      innerIdx = this.get('indexSet').indexAfter(innerIdx);
+    }
+    return this.get('index').objectAt(innerIdx);
+  },
+
+  replace: function() {
+    throw new Error("ResultSets are immutable!");
   }
 });

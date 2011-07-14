@@ -61,6 +61,9 @@ DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
     return this.intersection(otherKeySet).length > 0;
   },
 
+  /**
+   * @return {Array}
+   */
   intersection: function(otherKeySet) {
     var ret = [];
     if (!otherKeySet.isKeySet) {

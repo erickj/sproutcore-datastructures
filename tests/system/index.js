@@ -329,3 +329,23 @@ test("Index remove does not shift references to other objects", function() {
   testIndexRemovals(i, objs, 3, 'remove at 3:');
   SC.Logger.groupEnd();
 });
+
+test("Index lookups do return ResultSets", function() {
+  var result = i.lookup('foo');
+  ok(result.get('isResultSet'), 'lookup should return a result set');
+
+  same(result.get('index'), i, 'i should be set as the index of result');
+  ok(DS.Index.KeySet.create().addKeys('foo').isEqual(result.get('keySet')),
+     'result should have been given a proper keySet');
+
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    i.insert.apply(i, ['foo'].concat(objs));
+  });
+
+  equals(result.get('length'),objs.length,
+         'result should have %@ values'.fmt(objs.length));
+});
