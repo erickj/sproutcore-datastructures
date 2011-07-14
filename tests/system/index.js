@@ -305,13 +305,28 @@ function testIndexRemovals(index, objs, idxToRemove, prefix) {
     objs = objs.replace(idxToRemove,1,[null]);
   });
 
+  /**
+   * TODO: SC.Enumerable.reduce is broken compared to chrome and
+   * firefox 5!!! it skips null values
+   */
+  /*
   var numRemovals = objs.reduce(function(prev,cur) {
-      if (cur === null) prev++;
+      if (SC.none(cur)) {
+        prev++;
+      }
       return prev;
     },0),
+   */
+  var numRemovals = 0,
     indexSetSize = index.get('indexLength');
 
-  equals(indexSetSize, newLen - numRemovals, "%@ prereq - indexLength should equal reference array length - numRemovals");
+  for (var i=0;i<objs.length; i++) {
+    if (SC.none(objs[i]) && objs[i] === null) {
+      ++numRemovals;
+    }
+  }
+
+  equals(indexSetSize, newLen - numRemovals, "%@ prereq - indexLength should equal reference array length - numRemovals".fmt(prefix));
 
   equals(index.get('length'), newLen,
          '%@ prereq - Index should have %@ values'.fmt(prefix, newLen));
