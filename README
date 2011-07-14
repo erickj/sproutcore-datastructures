@@ -13,9 +13,8 @@ DataStructures has been built and tested against Sproutcore 1.5 only
 In your frameworks directory, run:
   git clone git://github.com/junction/sproutcore-datastructures.git datastructures
 
-Requires the 2 line bug fix be made to SC.IndexSet:
-
-http://pastebin.com/TQPegwAk
+SC 1.5 and earlier requires this 2 line bug fix be made to
+SC.IndexSet, http://pastebin.com/TQPegwAk
 
     $ git show head
     commit 3987ac0bb73a1cfbd07081f30cccecd01e845470
@@ -40,25 +39,51 @@ http://pastebin.com/TQPegwAk
 
            } else {
 
+As of 6/17/11, this bug fix is now in sproutcore/master:
 
-=== Current Implementation ===
+commit 614043253e55499277203568b56d4f1a2f2284ae
+Author: Erick Johnson <erick@junctionnetworks.com>
+Date:   Fri Jun 17 14:05:25 2011 -0700
+
+    fixed chained call to endPropertyChanges
+
+    Signed-off-by: Peter Wagenet <peter.wagenet@gmail.com>
+
+=== Current Implementations ===
 
 - mixins/composite:
   A mixin to make any sproutcore object a member to a bottom up
   composible DAG.  The composite pattern is useful for representing a
   larger object as a set of discrete parts.  This implementation is a
   modification of the composite pattern described in the gang of four
-  book.
+  book. See http://en.wikipedia.org/wiki/Composite_pattern for
+  background info.  Observers automatically setup to fire up the DAG
+  each time the DAG changes or when a designated composite property
+  changes.
 
 - system/query_array:
   Can be thought of like a generic RecordArray that is NOT tied to the
   store.  It allows you to apply an SC.Query (from datastore
-  framework) to any array like object and end up with a 0 indexed
-  fully observable array.
+  framework) or any other Object that responsds to +contains+ to any
+  array like object and end up with a 0 indexed fully observable array
+  (enumerable, array and range observers).  All shifts that happen to
+  the underlying array are fully accounted for and hidden from clients
+  of the QueryArray.
 
-- system/basic_index & system/substring_hash:
-  A very dirty lookup table implementation.  Likely to change severely
-  in the future
+- system/index:
+  A KVO friendly data structure for indexing key/value pairs.  Queries
+  can be laid against an Index that ask for updates on a given set of
+  keys (system/index/key_set).  The result set
+  (system/index/result_set) returned will be automatically notified of
+  all changes that occur in the index that originally created the
+  result set.  So insertions and removals will automatically be pushed
+  into the result set.  The Index provides an observable API inspired
+  by SC.CoreArray.  The "magical" index property, '{}', is notified on
+  all inserts and removals on the index, and the more powerful index
+  observers will notify on all willChange and didChange times, with
+  the affected keySet (DataStructures.Index.KeySet) and number of
+  additions and removals.
+
 
 === CONTRIBUTORS ===
 Author: Erick Johnson
