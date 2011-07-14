@@ -75,9 +75,7 @@ DataStructures.Indexable = {
     var key = indexable[0],
       value = indexable[1];
     if (index && key && value) {
-      SC.A(key).forEach(function(k) {
-        index.index(k,value);
-      },this);
+      index.insert(SC.A(key),value);
     }
   },
 
@@ -85,9 +83,7 @@ DataStructures.Indexable = {
     var key = indexable[0],
       value = indexable[1];
     if (index && key && value) {
-      SC.A(key).forEach(function(k) {
-        index.remove(k,value);
-      });
+      index.remove(SC.A(key),value);
     }
   }
 };

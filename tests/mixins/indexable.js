@@ -3,12 +3,12 @@
 // Copyright: ©2011 Junction Networks
 // Author:    Erick Johnson
 // ==========================================================================
-var Klass, index;
+var Klass, index, Index = DataStructures.Index;
 module("DataStructures.Indexable Mixin", {
   setup: function() {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
-    index = DataStructures.BasicIndex.create();
+    index = Index.create();
     Klass = SC.Object.extend(DataStructures.Indexable, {
       indexable: function() {
         return [this.get('key'),this.get('val')];
@@ -26,7 +26,7 @@ module("DataStructures.Indexable Mixin", {
   teardown: function() {
     SC.run(function() {
       SC.Logger.log('teardown runloop execute');
-      delete Index;
+      delete index;
       delete Klass;
     });
 
@@ -102,7 +102,7 @@ test("indexables are mutable", function() {
 });
 
 test("indexes can change", function() {
-  var i, index2 = DataStructures.BasicIndex.create();
+  var i, index2 = Index.create();
   SC.run(function() {
     i = Klass.create({
       index: index,
