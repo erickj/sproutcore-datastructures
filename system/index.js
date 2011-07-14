@@ -40,10 +40,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   isIndex: YES,
 
   init: function() {
-    this._keyMap = {}; // { key => SC.IndexSet }
+    this._keyMap = {};        // { key => SC.IndexSet }
     this._reverseKeyMap = {}; // hashFor(obj) => [key, key, key] }
-    this._valueList = []; // [obj,obj,obj]
-    this._valueMap = {}; // { hashFor(obj) => idx }
+    this._valueList = [];     // [obj,obj,obj]
+    this._valueMap = {};      // { hashFor(obj) => idx }
 
     // removing objects from the value map is dealt with by replacing
     // with [null], this way we don't shift the indices of other
