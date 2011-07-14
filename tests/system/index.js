@@ -29,7 +29,6 @@ module("DataStructures.Index", {
 test("Index is an object", function() {
   ok(SC.typeOf(Klass, SC.T_CLASS), "DataStructures.Index is an SC class");
   ok(SC.kindOf(i, Klass), "i is a kind of Index");
-  ok(i.isEnumerable, 'i should be enumerable');
   ok(i.isIndex, 'quack');
 });
 
@@ -232,7 +231,7 @@ test("Index can remove a value on an array of keys", function() {
   });
 });
 
-test("Index length is decremented on remove", function() {
+test("Index length is NOT decremented on remove", function() {
   var obj = {val: 'foo'};
   i.insert('foo', obj);
   equals(i.get('length'), 1, 'prereq - Index +insert+ should have inserted 1 value');
@@ -242,38 +241,52 @@ test("Index length is decremented on remove", function() {
   });
 
   ok(!i.isIndexed('foo',obj), 'prereq - obj should not be indexed at foo');
-  ok(i.get('length') == 0, 'index length should be equal to zero');
+  ok(i.get('length') == 1, 'index length should be equal to 1');
 });
 
-function testIndexRemovalShifts(index, objs, idxToRemove) {
+function testIndexRemovals(index, objs, idxToRemove, prefix) {
   // remove a second object, farther up
   var nextToGo = objs[idxToRemove],
-    newLen = objs.length - 1;
+    newLen = objs.length;
 
   SC.run(function() {
     index.remove('foo', nextToGo);
-    objs = objs.replace(idxToRemove,1,[]);
+    objs = objs.replace(idxToRemove,1,[null]);
   });
+
+  var numRemovals = objs.reduce(function(prev,cur) {
+      if (cur === null) prev++;
+      return prev;
+    },0),
+    indexSetSize = newLen - numRemovals;
 
   equals(index.get('length'), newLen,
-         'prereq - Index should have %@ values'.fmt(newLen));
+         '%@ prereq - Index should have %@ values'.fmt(prefix, newLen));
   equals(objs.get('length'), newLen,
-         'prereq - objs should have %@ objects'.fmt(newLen));
+         '%@ prereq - objs should have %@ objects'.fmt(prefix, newLen));
   equals(objs.indexOf(nextToGo), -1,
-         'prereq - the correct object was removed from objs');
+         '%@ prereq - the correct object was removed from objs'.fmt(prefix));
 
+  SC.Logger.group("Test objs array");
   objs.forEach(function(obj,idx) {
+    var val = obj && obj.val || obj;
     same(index.objectAt(idx), obj,
-         'prereq - obj{%@} should be at %@'.fmt(obj.val,idx));
-    equals(index.indexOf(obj), idx,
-           'indexOf(obj{%@}) should be %@'.fmt(obj.val,idx));
+         '%@ prereq - obj{%@} should be at %@'.fmt(prefix, val,idx));
+    if (val !== null) {
+      equals(index.indexOf(obj), idx,
+             '%@ indexOf(obj{%@}) should be %@'.fmt(prefix, val,idx));
+    } else {
+      equals(index.indexOf(obj), -1,
+             '%@ indexOf(null) should be -1'.fmt(prefix));
+    }
   });
+  SC.Logger.groupEnd();
 
+  SC.Logger.group("Test indexSet");
   var indexSet = index.indexSetForKeys('foo');
-  equals(indexSet.firstObject(), 0,
-         'the indexSet should start at 0');
-  equals(indexSet.get('length'), newLen,
-         'the indexSet should reference %@ objects'.fmt(newLen));
+  equals(indexSet.get('length'), indexSetSize,
+         '%@ the indexSet should reference %@ objects'.fmt(prefix, indexSetSize));
+  SC.Logger.groupEnd();
 }
 
 test("Index remove does not shift references to other objects", function() {
@@ -281,29 +294,39 @@ test("Index remove does not shift references to other objects", function() {
     return {val: 'value-%@'.fmt(i)};
   });
 
+  i.DEBUG_INDEX = YES;
   i.insert.apply(i, ['foo'].concat(objs));
+  i.DEBUG_INDEX = NO;
+
   equals(i.get('length'), objs.length,
          'prereq - Index +insert+ should have inserted %@ values'.fmt(objs.length));
   equals(i.indexSetForKeys('foo').get('length'),objs.length,
          'prereq - the indexSet should reference %@ objects'.fmt(objs.length));
 
   //
-  // remove one object
+  // remove one object => [1,2,3,4,5,6,7,8,9]
   //
-  testIndexRemovalShifts(i, objs, 0);
+  i.DEBUG_INDEX = YES;
+  SC.Logger.group('remove at 0');
+  testIndexRemovals(i, objs, 0, 'remove at 0:');
+  SC.Logger.groupEnd();
 
   //
-  // remove a second object, farther up
+  // remove a second object, farther up => [1,2,4,5,6,7,8,9]
   //
-  testIndexRemovalShifts(i, objs, 2);
+  SC.Logger.group('remove at 2');
+  testIndexRemovals(i, objs, 2, 'remove at 2:');
+  SC.Logger.groupEnd();
 
   //
-  // remove another object, in succession with the last
+  // remove another object, in succession with the last => [1,2,4,6,7,8,9]
   //
-  testIndexRemovalShifts(i, objs, 3);
+  SC.Logger.group('remove at 3');
+  testIndexRemovals(i, objs, 3, 'remove at 3:');
+  i.DEBUG_INDEX = NO;
+  SC.Logger.groupEnd();
+});
 
-  //
-  // remove another object from a previously removed index
-  //
-  testIndexRemovalShifts(i, objs, 0);
+test("Index does reuse empty slots left by removals", function() {
+
 });

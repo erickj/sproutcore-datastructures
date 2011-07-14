@@ -35,17 +35,21 @@ DataStructures.INDEX_INSERTION_EXCEPTION = "No insertions allowed on an index";
 DataStructures.INDEX_REPLACE_EXCEPTION = "No replacing values in an index";
 
 DataStructures.Index = SC.Object.extend(SC.Array, {
+  DEBUG_INDEX: NO,
+
   isIndex: YES,
 
   init: function() {
     this._keyMap = {}; // { key => SC.IndexSet }
     this._reverseKeyMap = {}; // hashFor(obj) => [key, key, key] }
-
     this._valueList = []; // [obj,obj,obj]
     this._valueMap = {}; // { hashFor(obj) => idx }
 
-    this._nullSet = SC.IndexSet.create();
-    this._publicToPrivateIndexCache = {}; // { idx => shiftedIdx }
+    // removing objects from the value map is dealt with by replacing
+    // with [null], this way we don't shift the indices of other
+    // objects in the map.  _nextInsertionPoint lets us reuse those
+    // slots so our _valueList doesn't look like swiss cheese.
+    this._nextInsertionPoint = [];
 
     this.set('length',0);
     return sc_super();
@@ -54,12 +58,9 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   destroy: function() {
     delete this._keyMap;
     delete this._reverseKeyMap;
-
     delete this._valueList;
     delete this._valueMap;
-
-    delete this._nullSet;
-    delete this._publicToPrivateIndexCache;
+    delete this._nextInsertionPoint;
 
     this.set('length', 0);
     return sc_super();
@@ -78,6 +79,8 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
   /**
    * Indicates if val is indexed at any of the named keys
+   * @param {String} {Array} or {DS.KeySet}
+   * @param {Mixed}
    * @return {Boolean}
    */
   isIndexed: function(key, val) {
@@ -106,7 +109,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       ret.add(indexSetForKey); // union the SC.IndexSets
     }
 
-    return this._translateIndexSet(ret);
+    return ret; //this._translateIndexSet(ret);
   },
 
   /**
@@ -155,7 +158,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     vals.forEach(function(val) {
       var keySet = this._keySetForKey(keys),
         hashForVal = SC.hashFor(val),
-        idx = this._addValue(val),
+        idx = this._insertValue(val),
         idxSet;
 
       var reverseMap = this._reverseKeyMap[hashForVal];
@@ -174,6 +177,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
           this._keyMap[insertionKey] = idxSet;
         }
         idxSet.add(idx); // idxSet should maintain uniqueness for us
+
+        if (this.DEBUG_INDEX) {
+          SC.Logger.log("DS.Index._insertValuesAtKeys: adding index set key %@ with index %@; indexSet after insert %@".fmt(insertionKey,idx,idxSet));
+        }
 
         // edit reverseMap
         reverseMap.push(insertionKey);
@@ -210,6 +217,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
         var idxSet = this._keyMap[removeKey];
         idxSet.remove(idx,1);
         if (!idxSet.get('length')) delete this._keyMap[removeKey];
+
+        if (this.DEBUG_INDEX) {
+          SC.Logger.log("DS.Index._removeValuesAtKeys: removing index set key %@ with index %@, index set after removal: %@".fmt(removeKey,idx,idxSet));
+        }
       },this);
 
       // check _reverseMap to see if we should remove val
@@ -221,11 +232,19 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   },
 
   /* @private */
-  _addValue: function(val) {
+  _insertValue: function(val) {
     var idx = this.indexOf(val);
     if (idx < 0) {
-      this.pushObject(val);
-      idx = this.get('length') - 1;
+      if (this.DEBUG_INDEX) SC.Logger.log("DS.Index: _insertValue",val);
+
+      // fill in gaps left by _removeValue
+      if (this._nextInsertionPoint.length) {
+        idx = this._nextInsertionPoint.shift();
+      } else {
+        idx = this.get('length');
+      }
+
+      this.replace(idx,1,[val]);
     }
     return idx;
   },
@@ -234,80 +253,24 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   _removeValue: function(val) {
     var idx = this.indexOf(val);
     if (idx >= 0) {
-      this.replace(idx,1);
+      if (this.DEBUG_INDEX) SC.Logger.log("DS.Index: _removeValue",val);
+
+      // replace with [null] so we don't shift the indexes, EJ spent
+      // MANY HOURS trying to close the holes, but instead found inner
+      // peace in accepting them.  Instead, let's just mark the holes
+      // for reuse on the next insert
+      this.replace(idx,1,[null]);
+
+      // reuse this index for the next _insertValue
+      this._nextInsertionPoint.push(idx);
     }
     return idx;
   },
 
   /**
-   * scary stuff: _publicToPrivateIndex & _translateIndexSet
-   *
-   * when we remove an item with _removeValue it may create a left or
-   * inner shift that slides all other values in the _valueList left.
-   * we are statically keeping track of the index position of each
-   * specific item in the _keyMap.  instead of rewriting the _keyMap
-   * every time (terrible idea), we'll keep a history of all the items
-   * that have been deleted at each position.  this is the _nullSet.
-   * when indices are calculated in indexSetForKey we will factor the
-   * _nullSet into each item position.
-   */
-  _publicToPrivateIndexCache: null, // make these one time only calculations
-  _publicToPrivateIndex: function(i) {
-    if (!this._nullSet.get('length')) {
-      return i;
-    }
-
-    // reinitialize the cache
-    if (!this._publicToPrivateIndexCache) {
-      this._publicToPrivateIndexCache = {};
-    }
-
-    // O(1) - after initial calculation
-    if (!SC.none(this._publicToPrivateIndexCache[i])) {
-      return this._publicToPrivateIndexCache[i];
-    }
-
-    var curNullIndex = this._nullSet.firstObject(),
-      internalIndex = i;
-
-    // bug: SC.IndexSet.create(0).indexAfter(0) yields 1 but
-    // SC.IndexSet.create(0).contains(1) yields false.
-    // To get around the bug check on each iteration that
-    // curNullIndex is contained in the _nullSet
-    var bugHack = true;
-
-    while(bugHack && !SC.none(curNullIndex) && internalIndex >= curNullIndex) {
-      internalIndex--; // try the next index
-      curNullIndex = this._nullSet.indexAfter(curNullIndex);
-      bugHack = this._nullSet.contains(curNullIndex);
-    }
-
-    this._publicToPrivateIndexCache[i] = internalIndex;
-    return internalIndex;
-  },
-
-  // TODO: after a removal occurs we are recalculating every index of
-  // every requested index set every single time. that could be lots
-  // of wasted cycles.  there is a potentially large efficiency gain
-  // here in implementing some kind of one time only calculation
-  // system for each removal... i.e. after a removal we'll need to
-  // recalculate each indexset again, but only once
-  _translateIndexSet: function(idxSet) {
-    if (!this._nullSet.get('length')) {
-      return idxSet;
-    }
-
-    var ret = SC.IndexSet.create();
-    idxSet.forEachRange(function(rngStart,rngLen) {
-      idxSet.forEachIn(rngStart, rngLen, function(curIdx) {
-        ret.add(this._publicToPrivateIndex(curIdx));
-      },this);
-    },this);
-    return ret;
-  },
-
-  /**
-   * begin array implementation
+   * Begin array implementation.  The arrayness of an index should be
+   * considered private.  This is simple being done as a poor man's
+   * array proxy for _valueList
    */
 
   /**
@@ -315,36 +278,21 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * consider this private!
    */
   replace: function(start,rmv,objs) {
-    // this isn't a normal array, no replacements allowed!
-    if (rmv && rmv > 0 && objs && objs.length > 0) {
-      throw new Error(DataStructures.INDEX_REPLACE_EXCEPTION);
-    }
-    // no mid-array insertions allowed, append only!
-    if (objs && objs.length > 0 && start != this.get('length')) {
-      throw new Error(DataStructures.INDEX_INSERTION_EXCEPTION);
-    }
-
+    // remove objs from fast lookup map
     if (rmv && rmv > 0) {
       var tmp = rmv;
       while(tmp--) {
         delete this._valueMap[SC.hashFor(this.objectAt(start + tmp))];
       }
-
-      // record removals in the _nullSet - see the note at
-      // _publicToPrivateIndex for mre information
-      this._nullSet.add(start,rmv);
-
-      // every time there is a nullSet addition, we need to wipe the
-      // _publicToPrivateIndexCache
-      delete this._publicToPrivateIndexCache;
     }
 
+    // modify the under lying array
     var ret = this._valueList.replace.apply(this._valueList, arguments);
     this.set('length', this._valueList.length);
 
     // manually track indexes of objects to make +indexOf+ O(1)
     var objCount = objs && objs.length;
-    for (var i=0; i<objCount; i++) {
+    for (var i=0; i<objCount; i++) if (objs[i]) {
       this._valueMap[SC.hashFor(objs[i])] = start + i;
     }
 
@@ -358,8 +306,9 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
   /* O(1) array lookups */
   indexOf: function(obj) {
-    var tmp = this._valueMap[SC.hashFor(obj)];
-    return SC.none(tmp) ? -1 : this._publicToPrivateIndex(tmp);
+    var tmp = this._valueMap[SC.hashFor(obj)], ret;
+    ret = SC.none(tmp) ? -1 : tmp;
+    return ret;
   },
 
   lastIndexOf: function(obj) {
