@@ -81,7 +81,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.Array,
     var intersection = keySet.intersection(this.get('keySet'));
 
     if (intersection && intersection.length) {
-      this.notifyPropertyChange('index');
+      this.notifyPropertyChange('indexSet');
     }
   },
 
