@@ -24,7 +24,7 @@ sc_require("system/normal_key_index");
  */
 DataStructures.SubstringHash = DataStructures.NormalKeyIndex.extend({
   keyMin: 1,
-  keyMax: 10,
+  keyMax: 20,
 
   isSubstringHash: YES,
 
