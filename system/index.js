@@ -284,20 +284,28 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    */
   _insertValuesAtKeys: function(keys,val) {
     var vals = SC.A(arguments).slice(1),
-      keySet = this._keySetForKey(keys,true);
+      vLen = vals.get ? vals.get('length') : vals.length,
+      keySet = this._keySetForKey(keys,true),
+      kLen = keySet.get ? keySet.get('length') : keySet.length;
 
-    vals.forEach(function(val) {
-        var hashForVal = SC.hashFor(val),
-        idx = this._insertValue(val),
+    var insertVal,insertionKey;
+
+    for(var i=0;i<vLen;i++) {
+      insertVal = vals[i];
+
+      var hashForVal = SC.hashFor(insertVal),
+        idx = this._insertValue(insertVal),
+        reverseMap = this._reverseKeyMap[hashForVal],
         idxSet;
 
-      var reverseMap = this._reverseKeyMap[hashForVal];
       if (!reverseMap) {
         this._reverseKeyMap[hashForVal] = [];
         reverseMap = this._reverseKeyMap[hashForVal];
       }
 
-      keySet.forEach(function(insertionKey) {
+      for (var j=0;j<kLen;j++) {
+        insertionKey = keySet.objectAt(j);
+
         // edit keyMap
         idxSet = this._keyMap[insertionKey];
         if (!idxSet) {
@@ -314,11 +322,11 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
         // edit reverseMap
         reverseMap.push(insertionKey);
-      },this);
+      }
 
       // make sure the reverseMap stays unique
       this._reverseKeyMap[hashForVal] = reverseMap.uniq();
-    },this);
+    };
   },
 
   /**
@@ -326,10 +334,16 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    */
   _removeValuesAtKeys: function(keys,val) {
     var vals = SC.A(arguments).slice(1),
-      keySet = this._keySetForKey(keys,true);
+      vLen = vals.get ? vals.get('length') : vals.length,
+      keySet = this._keySetForKey(keys,true),
+      kLen = keySet.get ? keySet.get('length') : keySet.length;
 
-    vals.forEach(function(val) {
-        var hashForVal = SC.hashFor(val),
+    var removeVal, removeKey;
+
+    for (var i=0;i<vLen;i++) {
+      removeKey = vals[i];
+
+      var hashForVal = SC.hashFor(val),
         idx = this.indexOf(val);
 
       if (idx < 0) return;
@@ -337,7 +351,9 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       var reverseMap = this._reverseKeyMap[hashForVal];
 
       // remove idx from each index set
-      keySet.forEach(function(removeKey) {
+      for (var j=0;j<kLen;j++) {
+        removeKey = keySet.objectAt(j);
+
         // edit reverseMap
         if (reverseMap) {
           reverseMap.removeObject(removeKey);
@@ -351,14 +367,14 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
         if (this.DEBUG_INDEX) {
           SC.Logger.log("DS.Index._removeValuesAtKeys: removing index set key %@ with index %@, index set after removal: %@".fmt(removeKey,idx,idxSet));
         }
-      },this);
+      }
 
       // check _reverseMap to see if we should remove val
       if (reverseMap.length == 0) {
         this._removeValue(val);
         delete this._reverseKeyMap[hashForVal];
       }
-    },this);
+    }
   },
 
   /* @private */
