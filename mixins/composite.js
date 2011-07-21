@@ -6,32 +6,10 @@
 /*globals DS */
 
 /** @namespace
-
-  Allows objects to be neatly composed with each other
-  in a generic fashion. Each composable piece in the
-  overall directed acyclic graph (DAG) is able to
-  function independently of the other parts of the
-  graph.
-
-  This allows composing a given set of properties together
-  onto a parent node like so:
-
-     var Firefly = SC.Object.extend(DS.Composite);
-
-     var serenity = Firefly.create({
-       weapons: ['crybaby'],
-     });
-
-     var jayne = SC.Object.create(DS.Composite, {
-       compositeParents: [serenity],
-       compositeProperties: ['weapons'],
-       weapons: ['Vera']
-     });
-
-
+  TODO
   @see <a href="http://en.wikipedia.org/wiki/Composite_pattern">Composite Pattern</a>
 */
-DS.Composite = {
+DataStructures.Composite = {
 
   /**
     Walk like a duck.
@@ -53,7 +31,7 @@ DS.Composite = {
     a leaf to each of the parents defined (altering
     `compositeChildren` of each of the `compositeParents`).
 
-    Note that this is a DAG, where cycles are forbidden.
+    Remember that this is a DAG, cycles are forbidden!
     This means that creating a cycle in the composite
     will result in an error being thrown.
 
@@ -63,23 +41,7 @@ DS.Composite = {
   compositeParents: null,
 
   /**
-    The decendents that this node is connected to in the DAG.
-
-    Altering `compositeChildren` inline will update the
-    DAG to account for the changes.
-
-    When `compositeChildren` set to `null`, the composite
-    is a leaf node on the DAG.
-
-    Adding any children appends this composite node as a
-    parent to each of the children defined (altering
-    `compositeParents` of each of the `compositeChildren`).
-
-    As with `compositeParents`, cycles are forbidden and
-    have the same ramifications.
-
-    @type Array|Object
-    @default null
+   * TODO
    */
   compositeChildren: null,
 
