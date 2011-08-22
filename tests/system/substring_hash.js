@@ -64,13 +64,28 @@ test("SubstringHash can constrain max index on substrings", function() {
   h.insert("bob", bob);
 
   ["b", "o", "bo","ob"].forEach(function(sub) {
-    ok(h.isIndexed(sub,bob), "bob should be indexed on \'%@\'".fmt(sub));
+    ok(h.isIndexed(sub,bob), "object {bob} should be indexed on  key \'%@\'".fmt(sub));
   });
 
-  // not actually indexed on bob, bobo or fobo, but that's the price
-  // to pay for short max's
-  ["bob","bobo","fobo"].forEach(function(sub) {
+  // not actually indexed on bobo or fobo
+  ["bobo","fobo"].forEach(function(sub) {
     ok(!h.isIndexed(sub,bob),
        "bob should NOT appear to be indexed on \'%@\', a string that would generate matching substrings".fmt(sub));
   });
+});
+
+// TODO: there is still a hole to fill - see the false negatives
+// "TODO" in substring_hash.js above keyTransform
+test("SubstringHash can have a low keyMax and still not create false negatives and false positives on zero indexed lookups", function() {
+  var bob = SC.Object.create({name: 'robert'});
+
+  h.set('keyMax',4);
+  h.insert("robert", bob);
+
+  // make sure we don't report false negatives for zero indexed keys like robert and rober
+  ok(h.isIndexed("robert",bob), "object {bob} should be index on key \'%@\'".fmt("robert"));
+  ok(h.isIndexed("rober",bob), "object {bob} should be index on key \'%@\'".fmt("rober"));
+
+  // make sure we don't report false positives for non-matching zero indexed keys over the keyMax
+  ok(!h.isIndexed("roberto",bob), "object {bob} should NOT be index on key \'%@\'".fmt("roberto"));
 });
