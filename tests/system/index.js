@@ -249,6 +249,50 @@ test("Index can insert values at a KeySet", function() {
      'cuzObj should be indexed at buz, muz, and cuz');
 });
 
+test("Index can remove values at a KeySet", function() {
+  //
+  // insert multiple values at multiple keys
+  //
+  var buzObj = {buz: true},
+    muzObj = {muz: true},
+    cuzObj = {cuz: true};
+
+  var keySet = DS.Index.KeySet.create();
+  keySet.set('keys', ['buz','muz','cuz']);
+
+  i.insert(keySet, buzObj, muzObj, cuzObj);
+  equals(i.get('indexLength'), 3, 'prereq - Index +insert+ should have inserted 3 values');
+
+  ok(i.isIndexed('buz', buzObj)
+     && i.isIndexed('muz', buzObj)
+     && i.isIndexed('cuz', buzObj),
+     'prereq - buzObj should be indexed at buz, muz, and cuz');
+  ok(i.isIndexed('buz', muzObj)
+     && i.isIndexed('muz', muzObj)
+     && i.isIndexed('cuz', muzObj),
+     'prereq - muzObj should be indexed at buz, muz, and cuz');
+  ok(i.isIndexed('buz', cuzObj)
+     && i.isIndexed('muz', cuzObj)
+     && i.isIndexed('cuz', cuzObj),
+     'prereq - cuzObj should be indexed at buz, muz, and cuz');
+
+  i.remove(keySet, buzObj, muzObj, cuzObj);
+
+  equals(i.get('indexLength'), 0, 'index should have indexLength 0');
+
+  ok(!i.isIndexed('buz', buzObj), 'buzObj should NOT be indexed at buz');
+  ok(!i.isIndexed('muz', buzObj), 'buzObj should NOT be indexed at muz');
+  ok(!i.isIndexed('cuz', buzObj), 'buzObj should NOT be indexed at cuz');
+
+  ok(!i.isIndexed('buz', muzObj), 'muzObj should NOT be indexed at buz');
+  ok(!i.isIndexed('muz', muzObj), 'muzObj should NOT be indexed at muz');
+  ok(!i.isIndexed('cuz', muzObj), 'muzObj should NOT be indexed at cuz');
+
+  ok(!i.isIndexed('buz', cuzObj), 'cuzObj should NOT be indexed at buz');
+  ok(!i.isIndexed('muz', cuzObj), 'cuzObj should NOT be indexed at muz');
+  ok(!i.isIndexed('cuz', cuzObj), 'cuzObj should NOT be indexed at cuz');
+});
+
 test("Index can remove a value on a single key", function() {
   //
   // insert multiple values at multiple keys
