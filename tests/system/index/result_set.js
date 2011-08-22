@@ -273,7 +273,8 @@ test("Index.ResultSet updates it's own enumerable property when changes occur", 
 
 test("Index.ResultSet do index set lookups with doKeyTransform property", function() {
   var tIndex = DataStructures.Index.create({
-    keyTransform: function(key) {
+    keyTransform: function(key,doTransform) {
+      if (!doTransform) return key;
       var ret = DS.Index.KeySet.create();
       for (var i=0,l=key.length;i<l;i++) {
         ret.addKeys(key[i]);

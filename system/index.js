@@ -84,9 +84,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * @see {_keySetForKey} for more information about this rule of thumb
    *
    * @param {String}
+   * @param {Boolean}
    * @return {String}, {Array}, or {DS.Index.KeySet}
    */
-  keyTransform: function(key) {
+  keyTransform: function(key,doTransform) {
     return key; // wysiwyg keys
   },
 
@@ -246,7 +247,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
       if (!this._keyTransformCache[cacheKey]) {
         curKey = this.keyNormalize(curKey); // always want to normalize
-        curKey = doTransform ? this.keyTransform(curKey) : curKey;
+        curKey = this.keyTransform(curKey,doTransform);
         this._keyTransformCache[cacheKey] = curKey;
       }
 

@@ -28,7 +28,9 @@ module("DataStructures.Index", {
 
 test("Index does allow multiplexing key inserts via +keyTransform+", function() {
   var transformIndex = Klass.create({
-    keyTransform: function(key) {
+    keyTransform: function(key, doTransform) {
+      if (!doTransform) return key;
+
       var ret = [];
       for(var i=0;i<key.length;i++) {
         ret.push(key[i]);
@@ -50,9 +52,42 @@ test("Index does allow multiplexing key inserts via +keyTransform+", function() 
   });
 });
 
+test("Index calls +keyTransform+ ALWAYS with the doTransform flag passed as an argument", function() {
+  var keyTransformCalled;
+  var keyTransformArgs;
+
+  var transformIndex = Klass.create({
+    keyTransform: function(key,doTransform) {
+      keyTransformCalled = true;
+      keyTransformArgs = SC.A(arguments);
+      return key;
+    }
+  });
+
+  var checkValues = function(key,doTransform) {
+    ok(keyTransformCalled, 'keyTransform should be called for value "%@"'.fmt(doTransform));
+    equals(keyTransformArgs.length,2,'keyTransform should be passed 2 arguments');
+    equals(SC.typeOf(keyTransformArgs[1]), SC.T_BOOL, 'the doTransform arg should be a boolean');
+    ok(keyTransformArgs[1] === doTransform, 'doTransform should triple equal %@'.fmt(doTransform));
+    ok(keyTransformArgs[0] === key, 'key should triple equal %@'.fmt(key));
+  };
+
+  // +lookup+ just happens to be a public API function that passes
+  // through doTransform
+  transformIndex.lookup('foo',true);
+  checkValues('foo',true);
+
+  keyTransformCalled = undefined;
+  keyTransformArgs = undefined;
+  transformIndex.lookup('foo',false);
+  checkValues('foo',false);
+});
+
 test("Index does allow enabling/disabling +keyTransform+ via setting doTransform flag", function() {
   var transformIndex = Klass.create({
     keyTransform: function(key,doTransform) {
+      if (!doTransform) return key;
+
       var ret = [];
       for(var i=0;i<key.length;i++) {
         ret.push(key[i]);
@@ -81,7 +116,9 @@ test("Index does allow enabling/disabling +keyTransform+ via setting doTransform
 
 test("Index does not mutate key during a index/normalize/transform", function() {
   var transformIndex = Klass.create({
-    keyTransform: function(key) {
+    keyTransform: function(key, doTransform) {
+      if (!doTransform) return key;
+
       var ret = DS.Index.KeySet.create();
       for(var i=0;i<key.length;i++) {
         ret.addKeys(key[i]);
