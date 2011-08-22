@@ -196,7 +196,7 @@ DataStructures.Composite = {
                   .uniq();
       return ret;
     }
-  }.property(/* see _cmpst_notifyChildrenIfRootChanged */).cacheable(),
+  }.property(/* see _cmpst_notifyChildrenIfRootChanged */),//.cacheable(),
 
   compositeSupplant: function(composite) {
     var children = composite.get('compositeChildren');
