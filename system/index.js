@@ -341,7 +341,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     var removeVal, removeKey;
 
     for (var i=0;i<vLen;i++) {
-      removeKey = vals[i];
+      val = vals[i];
 
       var hashForVal = SC.hashFor(val),
         idx = this.indexOf(val);
