@@ -266,7 +266,12 @@ DataStructures.Composite = {
     });
 
     return ret.flatten();
-  }.property('isCompositePiece').cacheable(),
+// TODO: fix detailProvider notifying the contact to fix this
+// To reproduce - fetch DirectoryEntityItems after logging in - look
+// at the sip field of an existing contact.  it isn't populated.  to
+// populate run <contact>.notifyPropertyChange('compositeChildren')
+/*  }.property('isCompositePiece').cacheable(), */
+  }.property('isCompositePiece'),
 
   compositeCompare: null,
   compositeSortChildren: function() {
