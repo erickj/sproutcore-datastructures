@@ -65,10 +65,22 @@ function setupIndexObservers(index) {
 }
 
 function testIndexObserverFired(observerArgs, keySet, added, removed, prefix) {
-  ok(observerArgs.keySet && observerArgs.keySet.isKeySet, '%@keySet passed to willChange/didChange should be a KeySet'.fmt(prefix));
-  ok(keySet.isEqual(observerArgs.keySet), '%@observer keySet should be equal'.fmt(prefix));
-  equals(observerArgs.added, added, '%@expected %@ items to be added'.fmt(prefix,added));
-  equals(observerArgs.removed, removed, '%@expected %@ items to be removed'.fmt(prefix,removed));
+  ok(observerArgs.keySet && observerArgs.keySet.isKeySet,
+    '%@keySet passed to willChange/didChange should be a KeySet'.fmt(prefix));
+
+  ok(observerArgs.keySet.contains(DataStructures.Index.LOOKUP_KEY_ALL),
+    'keySet should contain special ALL lookup key');
+
+  ok(keySet.intersects(observerArgs.keySet),
+    '%@observer keySet should be equal'.fmt(prefix));
+
+  equals(observerArgs.added,
+         added,
+         '%@expected %@ items to be added'.fmt(prefix,added));
+
+  equals(observerArgs.removed,
+         removed,
+         '%@expected %@ items to be removed'.fmt(prefix,removed));
 };
 
 test("Index willChange/didChange fires on inserting a single object", function() {

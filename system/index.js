@@ -151,6 +151,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       lenKeys = keySet.get('length'),
       indexSetForKey;
 
+    if (keySet.contains(DataStructures.Index.LOOKUP_KEY_ALL)) {
+      return SC.IndexSet.create(0,this.get('indexLength'));
+    }
+
     var ret = SC.IndexSet.create();
 
     for(var i=0;i<lenKeys;i++) {
@@ -241,6 +245,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       retKeys = [],
       cacheKey,curKey;
 
+    if (keySet.contains(DataStructures.Index.LOOKUP_KEY_ALL)) {
+      return keySet.set('keys',DataStructures.Index.LOOKUP_KEY_ALL);
+    }
+
     for(var i=0,l=keySet.get('length');i<l;i++) {
       curKey = keySet.objectAt(i);
       cacheKey = cacheKeyTpl.fmt(curKey);
@@ -271,6 +279,8 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
    * @private
    */
   _lookup: function(key, doTransform) {
+    if (!key) key = DataStructures.Index.LOOKUP_KEY_ALL;
+
     doTransform = SC.none(doTransform) ? false : !!doTransform;
 
     return DataStructures.Index.ResultSet.create({
@@ -306,6 +316,8 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
       for (var j=0;j<kLen;j++) {
         insertionKey = keySet.objectAt(j);
+
+        if (insertionKey == DataStructures.Index.LOOKUP_KEY_ALL) continue;
 
         // edit keyMap
         idxSet = this._keyMap[insertionKey];
@@ -354,6 +366,8 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       // remove idx from each index set
       for (var j=0;j<kLen;j++) {
         removeKey = keySet.objectAt(j);
+
+        if (removeKey == DataStructures.Index.LOOKUP_KEY_ALL) continue;
 
         // edit reverseMap
         if (reverseMap) {
@@ -481,6 +495,8 @@ DataStructures.Index = DataStructures.Index.extend({
       vals = SC.A(arguments).slice(1);
 
     keySet = this._keySetForKey(key);
+    keySet.addKeys(DataStructures.Index.LOOKUP_KEY_ALL);
+
     this.indexContentWillChange(keySet, 0, vals.length);
     ret = sc_super();
     this.indexContentDidChange(keySet, 0, vals.length);
@@ -493,6 +509,8 @@ DataStructures.Index = DataStructures.Index.extend({
       vals = SC.A(arguments).slice(1);
 
     keySet = this._keySetForKey(key);
+    keySet.addKeys(DataStructures.Index.LOOKUP_KEY_ALL);
+
     this.indexContentWillChange(keySet, vals.length, 0);
     ret = sc_super();
     this.indexContentDidChange(keySet, vals.length, 0);
@@ -594,3 +612,10 @@ DataStructures.Index = DataStructures.Index.extend({
     return this ;
   }
 });
+
+/**
+ * Special lookup key added to all willChange/didChange notification
+ * keySets.  Add this key to your lookup keySet (or just supply
+ * nothing) to read all values in the index
+ */
+DataStructures.Index.LOOKUP_KEY_ALL = "__*__";

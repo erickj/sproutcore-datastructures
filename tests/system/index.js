@@ -442,3 +442,44 @@ test("Index lookups do set _doKeyTransform_ on ResultSets", function() {
   ok(resultEnabled.get('doKeyTransform'),
     'resultEnabled set should have doKeyTransform enabled');
 });
+
+test("Index lookups can return all records with spcial LOOKUP_KEY_ALL", function() {
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    i.insert.apply(i, ['foo'].concat(objs));
+  });
+
+  var result = i.lookup(DataStructures.Index.LOOKUP_KEY_ALL);
+  result.DEBUG_RESULT_SET = YES;
+
+  equals(result.get('length'),i.get('indexLength'), 'looking up on the "special" all key should return all records');
+
+  SC.run(function() {
+    i.insert('bar',10);
+  });
+
+  equals(result.get('length'),i.get('indexLength'), 'lookup results from "special" all key should be updated on inserts');
+
+  SC.Logger.log('removing from * lookup result set');
+  SC.run(function() {
+    i.remove('bar',10);
+  });
+
+  equals(result.get('length'),i.get('indexLength'), 'lookup results from "special" all key should be updated on removals');
+});
+
+test("Index lookups can return all records when no parameter is passed to lookup", function() {
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    i.insert.apply(i, ['foo'].concat(objs));
+  });
+
+  var result = i.lookup();
+  equals(result.get('length'),i.get('indexLength'), 'looking up with NO key should return all records');
+});

@@ -89,3 +89,16 @@ test("SubstringHash can have a low keyMax and still not create false negatives a
   // make sure we don't report false positives for non-matching zero indexed keys over the keyMax
   ok(!h.isIndexed("roberto",bob), "object {bob} should NOT be index on key \'%@\'".fmt("roberto"));
 });
+
+test("SubstringHash can lookup all records", function() {
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    h.insert.apply(h, ['foo'].concat(objs));
+  });
+
+  var result = h.lookup();
+  equals(result.get('length'),h.get('indexLength'), 'looking up with NO key should return all records');
+});

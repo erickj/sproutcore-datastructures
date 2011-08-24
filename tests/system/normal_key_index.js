@@ -52,3 +52,16 @@ test("NormalKeyIndex does normalize keys", function() {
     i++;
   }
 });
+
+test("NormalKeyIndex can lookup all records", function() {
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    n.insert.apply(n, ['foo'].concat(objs));
+  });
+
+  var result = n.lookup();
+  equals(result.get('length'),n.get('indexLength'), 'looking up with NO key should return all records');
+});

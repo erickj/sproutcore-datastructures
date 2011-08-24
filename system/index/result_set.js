@@ -14,6 +14,8 @@ sc_require('system/query_array');
 DataStructures.Index.ResultSet = SC.Object.extend(SC.Array,
   /* DataStructures.Index.ResultSet.prototype */ {
 
+  DEBUG_RESULT_SET: NO,
+
   isResultSet: YES,
 
   keySet: null,
@@ -78,9 +80,16 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.Array,
   },
 
   _indexDidChange: function(keySet, removed, added) {
+    if (this.DEBUG_RESULT_SET) {
+      SC.Logger.log('DS.ResultSet._indexDidChange: index changing for keys',
+                    SC.A(keySet),
+                    arguments);
+    }
+
     var intersection = keySet.intersection(this.get('keySet'));
 
     if (intersection && intersection.length) {
+      if (this.DEBUG_RESULT_SET) SC.Logger.log('DS.ResultSet._indexDidChange: have key intersection', intersection);
       this.notifyPropertyChange('indexSet');
     }
   },
