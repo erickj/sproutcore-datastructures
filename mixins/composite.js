@@ -91,6 +91,13 @@ DataStructures.Composite = {
   compositeProperties: null,
 
   /**
+    Return only unique values for each compositeProperty.
+    You probably want this to be YES but for legacy compliance it
+    defaults to NO.
+   */
+  compositeUniqueValues: NO,
+
+  /**
     Whether this composite should display it's actions.
     Useful for debugging purposes.
     @type Boolean
@@ -244,26 +251,26 @@ DataStructures.Composite = {
   },
 
   compositeInspect: function() {
-    SC.Logger.group("Composite %@".fmt(SC.hashFor(this)));
+    SC.Logger.group("Composite %@".fmt(this.toString()));
     if (this.get('compositeIsRoot')) {
       SC.Logger.log("-> ROOT");
     } else {
       SC.Logger.log("-> child of %@: [%@]".fmt(this.get('compositeParents').length,
-                                               this.get('compositeParents').getEach('compositeName')));
+                                               this.get('compositeParents').invoke('toString')));
     }
+
+    this._compositeInspectHook();
 
     SC.Logger.log("-> properties: [%@]".fmt(this.get('compositeProperties')));
     SC.Logger.log("-> property values: [%@]".fmt(this.get('compositeProperties').map(function(p) {
                                                                                        return "%@:[%@]".fmt(p,this.get(p));
                                                                                      }.bind(this))));
-    this._compositeInspectHook();
-
     if (!!this.compositeCompare) SC.Logger.log("-> is comparable");
 
     if (!this.get('compositeIsLeaf')) {
       SC.Logger.log("-> composite contains %@ pieces (including self)".fmt(this.get('compositeList').length));
       SC.Logger.log("-> parent of %@: [%@]".fmt(this.get('compositeChildren').length,
-                                                this.get('compositeChildren').getEach('compositeName')));
+                                                this.get('compositeChildren').invoke('toString')));
       this.get('compositeChildren').invoke('compositeInspect');
     } else {
       SC.Logger.log("-> LEAF");
@@ -273,10 +280,6 @@ DataStructures.Composite = {
   },
 
   _compositeInspectHook: function() {}, // override in implementations
-
-  compositeName: function() {
-    return SC.hashFor(this);
-  }.property().cacheable(),
 
   compositeIsLeaf: function() {
     return this.get('isCompositePiece') && !this.get('compositeHasChildren');
@@ -762,10 +765,14 @@ DataStructures.Composite = {
 
       if (!this._cmpst_isCollecting) {
         ret = this.doCompositeOperation('get',[key]);
+
+        if (this.compositeUniqueValues && ret.uniq)
+          ret = ret.uniq();
+
         if (this.get('compositeIsLeaf')
             && SC.typeOf(cached) != SC.T_ARRAY
             && ret.length <= 1) {
-         ret = ret[0]; // preserve the array/non-arrayness of values
+          ret = ret[0]; // preserve the array/non-arrayness of values
         }
       } else {
         ret = cached;
