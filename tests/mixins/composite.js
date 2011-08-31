@@ -13,7 +13,8 @@ var basicInterface = [
   'doCompositeOperation',
   'compositeHasChild',
   'compositeHasParent',
-  'compositeSupplant'
+  'compositeSupplant',
+  'compositeInspect'
 ];
 
 module("DataStructures Composite Mixin", {
@@ -215,6 +216,8 @@ test("composite root", function() {
 
   var carsAndParts = [camaro, v8Engine, superCharger, intakeValve];
 
+  ok(camaro.get('compositeIsRoot'), 'camaro is the root of the composite');
+
   carsAndParts.forEach(function(piece) {
     ok(SC.isArray(piece.get('compositeRoot')), 'the composite root should always be an array at piece %@'.fmt(piece.name));
     same(piece.get('compositeRoot')[0],
@@ -232,8 +235,12 @@ test("composite root", function() {
     dealership.addCompositeChild(camaro);
   });
 
+  ok(dealership.get('compositeIsRoot'), 'dealership is the root of the composite');
+
   ok(camaro.compositeHasParent(dealership),
     'prereq - delearship should be the composite parent of camaro');
+
+  ok(!camaro.get('compositeIsRoot'), 'camaro is no longer the root of the composite');
 
   carsAndParts.forEach(function(piece) {
     same(piece.get('compositeRoot')[0],
@@ -251,9 +258,11 @@ test("composite root", function() {
     deliveryTruck.addCompositeChild(camaro);
   });
 
+  ok(deliveryTruck.get('compositeIsRoot'), 'deliveryTruck is also a root of the composite');
+
   ok(camaro.compositeHasParent(dealership)
      && camaro.compositeHasParent(deliveryTruck),
-    'prereq - deliveryTruck should have 2 compositeParents');
+    'prereq - camaro should have 2 compositeParents');
 
   var root, rootOK;
   carsAndParts.forEach(function(piece) {

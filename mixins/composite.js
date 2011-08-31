@@ -198,6 +198,12 @@ DataStructures.Composite = {
     }
   }.property(/* see _cmpst_notifyChildrenIfRootChanged */),//.cacheable(),
 
+  // TODO: this isn't cacheable currently due to hack above
+  compositeIsRoot: function() {
+    var cr = this.get('compositeRoot');
+    return cr.length == 1 && cr[0] === this;
+  }.property('compositeRoot'),//.cacheable(),
+
   compositeSupplant: function(composite) {
     var children = composite.get('compositeChildren');
     children.compact().forEach(function(c) {
@@ -236,6 +242,41 @@ DataStructures.Composite = {
 
     return ret;
   },
+
+  compositeInspect: function() {
+    SC.Logger.group("Composite %@".fmt(SC.hashFor(this)));
+    if (this.get('compositeIsRoot')) {
+      SC.Logger.log("-> ROOT");
+    } else {
+      SC.Logger.log("-> child of %@: [%@]".fmt(this.get('compositeParents').length,
+                                               this.get('compositeParents').getEach('compositeName')));
+    }
+
+    SC.Logger.log("-> properties: [%@]".fmt(this.get('compositeProperties')));
+    SC.Logger.log("-> property values: [%@]".fmt(this.get('compositeProperties').map(function(p) {
+                                                                                       return "%@:[%@]".fmt(p,this.get(p));
+                                                                                     }.bind(this))));
+    this._compositeInspectHook();
+
+    if (!!this.compositeCompare) SC.Logger.log("-> is comparable");
+
+    if (!this.get('compositeIsLeaf')) {
+      SC.Logger.log("-> composite contains %@ pieces (including self)".fmt(this.get('compositeList').length));
+      SC.Logger.log("-> parent of %@: [%@]".fmt(this.get('compositeChildren').length,
+                                                this.get('compositeChildren').getEach('compositeName')));
+      this.get('compositeChildren').invoke('compositeInspect');
+    } else {
+      SC.Logger.log("-> LEAF");
+    }
+
+    SC.Logger.groupEnd();
+  },
+
+  _compositeInspectHook: function() {}, // override in implementations
+
+  compositeName: function() {
+    return SC.hashFor(this);
+  }.property().cacheable(),
 
   compositeIsLeaf: function() {
     return this.get('isCompositePiece') && !this.get('compositeHasChildren');
