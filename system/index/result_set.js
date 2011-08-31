@@ -11,8 +11,10 @@ sc_require('system/query_array');
  * that affects one of its key set values then the ResultSet updates
  * its IndexSet by requerying the index for an updated version.
  */
-DataStructures.Index.ResultSet = SC.Object.extend(SC.Array,
+DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
   /* DataStructures.Index.ResultSet.prototype */ {
+
+  isSCArray: NO, // subvert needing to support range observers
 
   DEBUG_RESULT_SET: NO,
 
