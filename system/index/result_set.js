@@ -96,6 +96,47 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
     }
   },
 
+  _prevIndexSetLen: null,
+  _arrayChangeNotificationObserver: function() {
+if (this.DEBUG_RESULT_SET) debugger;
+
+    var set = this.get('indexSet');
+    if (!(set && set.get('isIndexSet'))) return;
+
+    var prevLength = this._prevIndexSetLen ? this._prevIndexSetLen : 0;
+    var diff = set.get('length') - prevLength;
+
+    // TODO: this is technically incorrect - but oh well, it won't be
+    // an issue until someone updates DS.Index to both add & remove in
+    // a single function (thus, in a single call to
+    // indexWillChange/indexDidChange).  It is incorrect because if
+    // this result set were wrapped by a query array and both an
+    // addition/removal were to happen (a point substitution) - then
+    // we would want to alert the query array to evaluate the
+    // substitution at the point to assure the new value does(n't)
+    // match the +contains+ function of the query
+    if (diff === 0) return; // no net change
+
+    var isAdd = diff > 0;
+    var added = isAdd ? Math.abs(diff) : 0;
+    var removed = isAdd ? 0 : Math.abs(diff);
+
+    // TODO: in the removal case using a start value of 0 is
+    // technically wrong.  however the calculation is extremely
+    // involved and I am just making a quick fix here.  i belive 0
+    // works in all cases however because it will invoke a left shift
+    // on the index set thus causing any query array that wraps this
+    // result set to trigger.  the downside here is that it is
+    // inefficient
+    var start = isAdd ? prevLength : 0;
+
+    this.arrayContentWillChange(start,removed,added);
+    this.arrayContentDidChange(start,removed,added);
+
+    if (this.DEBUG_RESULT_SET) SC.Logger.log('Result Set content changed',[start,removed,added]);
+    this._prevIndexSetLen = set.get('length');
+  }.observes('indexSet'),
+
   /* SC.Array.prototype overrides */
   '[]': function() {
     return this;
