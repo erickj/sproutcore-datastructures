@@ -98,8 +98,6 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
 
   _prevIndexSetLen: null,
   _arrayChangeNotificationObserver: function() {
-if (this.DEBUG_RESULT_SET) debugger;
-
     var set = this.get('indexSet');
     if (!(set && set.get('isIndexSet'))) return;
 
@@ -138,10 +136,6 @@ if (this.DEBUG_RESULT_SET) debugger;
   }.observes('indexSet'),
 
   /* SC.Array.prototype overrides */
-  '[]': function() {
-    return this;
-  }.property('indexSet'),
-
   length: function() {
     return this.getPath('indexSet.length') || 0;
   }.property('[]'),
