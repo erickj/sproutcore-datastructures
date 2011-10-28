@@ -55,7 +55,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
     if (i === this._cachedIndex) return;
 
     if (this._cachedIndex) {
-      this._cachedIndex.removeIndexObsever({
+      this._cachedIndex.removeIndexObserver({
         target: this,
         indexWillChange: '_indexWillChange',
         indexDidChange: '_indexDidChange'
