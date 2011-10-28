@@ -142,11 +142,11 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
 
   objectAt: function(idx) {
     var indexSet = this.get('indexSet'),
-      index = this.get('indexSet');
+      index = this.get('index');
 
-    if (!indexSet || !index) return undefined;
+    if (!indexSet || !index || index.get('isDestroyed')) return undefined;
 
-    var innerIdx = index.firstObject();
+    var innerIdx = indexSet.firstObject();
     while(idx--) {
       innerIdx = this.get('indexSet').indexAfter(innerIdx);
     }

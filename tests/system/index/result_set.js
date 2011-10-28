@@ -315,3 +315,23 @@ test("Index.ResultSet do index set lookups with doKeyTransform property", functi
   equals(rs.get('length'), values.length,
          'ResultSet should have %@ result for key %@'.fmt(key,values.length));
 });
+
+test("Index.ResultSet do return undefined for +objectAt+ when its index is null", function() {
+  loadResultSet(resultSet,key,index);
+  equals(resultSet.get('length'), values.length,
+     'prereq - resultSet should have length %@'.fmt(values.length));
+  ok(resultSet.objectAt(0), 'prereq - there is something at index 0');
+
+  resultSet.set('index',null);
+  same(resultSet.objectAt(0),undefined, 'index = null -> returns undefined');
+});
+
+test("Index.ResultSet do return undefined for +objectAt+ when its index is destroyed", function() {
+  loadResultSet(resultSet,key,index);
+  equals(resultSet.get('length'), values.length,
+     'prereq - resultSet should have length %@'.fmt(values.length));
+  ok(resultSet.objectAt(0), 'prereq - there is something at index 0');
+
+  resultSet.get('index').destroy();
+  same(resultSet.objectAt(0),undefined, 'index isDestroyed -> returns undefined');
+});
