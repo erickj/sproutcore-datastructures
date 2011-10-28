@@ -151,14 +151,6 @@ test("DataStructures.Composite are destroyed", function () {
     p2.destroy(); // destroy a composite child
   });
 
-  basicInterface.forEach(function(m) {
-    ok(!this.respondsTo(m), 'Composite p2 should no longer respond to method +%@+'.fmt(m));
-  },p2);
-
-  ok(SC.none(p2.get('isCompositePiece')), 'p2 should was destroyed and is no longer a composite piece');
-  ok(SC.none(p2.get('compositeIsLeaf')), 'asking p2 if its a compositeLeaf is Mu');
-  ok(SC.none(p2.get('compositeHasChildren')), 'asking p2 if it hasChildren is Mu');
-
   equals(p2.tryToPerform('compositeHasParent',c2), false, 'p2 is no longer a composite and should have no parents');
 
   ok(!c2.compositeHasChild(p2), 'c2 should no longer have compositeChild p2');
@@ -388,6 +380,40 @@ test("a composite can add/remove children and perform operations", function () {
   restrictorPlate.addCompositeParent(v8Engine);
   equals(mustang.getHorsePower(), 330, 'deeper bottom up composite addition');
   equals(camaro.getHorsePower(), 300, 'deeper bottom up composite addition');
+});
+
+test("composite should throw error when adding a destroyed child/parent", function() {
+  var camaro = Car.create({
+    weight: 2000,
+    horsePower: 250
+  });
+
+  var v8Engine = Part.create({
+    weight: 300,
+    horsePower: 100
+  });
+
+  var superCharger = Part.create({
+    weight: 10,
+    horsePower: 50
+  });
+
+  ok(camaro.get('isCompositePiece'), 'prereq - camaro is a composite piece');
+  ok(v8Engine.get('isCompositePiece'), 'prereq - v8Engine is a composite piece');
+  ok(superCharger.get('isCompositePiece'), 'prereq - superCharger is a composite piece');
+
+  camaro.destroy();
+  superCharger.destroy();
+
+  ok(camaro.get('isDestroyed'), 'prereq - camaro should be destroyed');
+  ok(superCharger.get('isDestroyed'), 'prereq - superCharger should be destroyed');
+
+  should_throw(function() { v8Engine.addCompositeParent(camaro); },
+               null, // passes for any error
+               'expect an error when adding a destroyed parent to a composite piece');
+  should_throw(function() { v8Engine.addCompositeChild(superCharger); },
+               null, // passes for any error
+               'expect an error when adding a destroyed child to a composite piece');
 });
 
 test("compositeList is observable", function() {

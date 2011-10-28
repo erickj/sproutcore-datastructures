@@ -142,14 +142,14 @@ DataStructures.Composite = {
     //
     // @see tests/mixins/composite/multi_parent_destroy_bug.js
     var parents = this.get('compositeParents').copy();
-    parents.forEach(function(p) {
-      if (!arguments[0]) return;
+    parents.forEach(function _anon_parentsDestoyIterator(p) {
+      if (!arguments[0] || p.get('isDestroyed')) return;
       p.removeCompositeChild(this);
     },this);
 
     var children = this.get('compositeChildren').copy();
-    children.forEach(function(c) {
-      if (!arguments[0]) return;
+    children.forEach(function _anon_childDestroyIterator(c) {
+      if (!arguments[0] || c.get('isDestroyed')) return;
       this.removeCompositeChild(c);
     },this);
 
@@ -167,23 +167,6 @@ DataStructures.Composite = {
     // to their original states
     for (var p in this) if (this[p] && this[p].isDynamicCompositeProperty) {
       this._cmpst_resetDynamicProperty(p);
-    }
-
-    // this for loop is the effective opposite of SC.mixin
-    for (var p in DataStructures.Composite) {
-      if (DataStructures.Composite.hasOwnProperty(p)
-          && this[p]
-          && SC.isEqual(this[p], DataStructures.Composite[p])) {
-        if (debug) SC.Logger.log('Composite+destroy+: removing property',p);
-
-        if (this.hasOwnProperty(p)) {
-          delete this[p];
-        } else {
-          // the property came from the prototype object and we don't want to modify
-          // that in the very likely case there are other inheritors of the prototype
-          this[p] = undefined;
-        }
-      }
     }
   },
 
@@ -356,6 +339,10 @@ DataStructures.Composite = {
     // TODO: see the note above about avoiding loops
     if (this.compositeHasParent(c)) return null;
 
+    if (c.get('isDestroyed')) {
+      throw new Error("unable to add destroyed object as composite child");
+    }
+
     if (!c.isCompositePiece) {
       throw new Error("only composite pieces may be added as a child - try mixing DataStructures.Composite into your child object first");
     }
@@ -416,6 +403,10 @@ DataStructures.Composite = {
 
     // TODO: see the note above about avoiding loops
     if (this.compositeHasChild(p)) return null;
+
+    if (p.get('isDestroyed')) {
+      throw new Error("unable to add destroyed object as composite parent");
+    }
 
     if (!p.isCompositePiece) {
       throw new Error("only composite pieces may be added as a parent - try mixing DataStructures.Composite into your parent object first");
@@ -589,9 +580,9 @@ DataStructures.Composite = {
 
     this.get('compositeParents').forEach(function compositeParentsIterator(p) {
       if (!arguments[0]) return;
+
       if (this.DEBUG_COMPOSITE)
         SC.Logger.log('%@ adding child %@ - has child'.fmt(p.toString(), this.toString()), p.compositeHasChild(this));
-
       p.addCompositeChild(this);
     },this);
   },
