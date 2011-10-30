@@ -5,6 +5,8 @@
 // ==========================================================================
 DataStructures.Indexable = {
 
+  DEBUG_INDEXABLE: NO,
+
   /* quack */
   isIndexable: YES,
 
@@ -53,6 +55,9 @@ DataStructures.Indexable = {
 
   _cachedIndexable: null,
   _indexingDidChange: function() {
+    if (this.DEBUG_INDEXABLE)
+      SC.Logger.log('DS.Indexable+_indexingDidChange+:',arguments);
+
     var indexable = SC.A(this.get('indexable')),
       changed = !this._cachedIndexable; // first time through this will be true
 
@@ -72,6 +77,9 @@ DataStructures.Indexable = {
   },
 
   _addToIndex: function(index,indexable) {
+    if (this.DEBUG_INDEXABLE)
+      SC.Logger.log('DS.Indexable+_indexingDidChange+: adding to index with args',index, indexable);
+
     var key = indexable[0],
       value = indexable[1];
     if (index && key && value) {
@@ -80,6 +88,9 @@ DataStructures.Indexable = {
   },
 
   _removeFromIndex: function(index,indexable) {
+    if (this.DEBUG_INDEXABLE)
+      SC.Logger.log('DS.Indexable+_indexingDidChange+: removing from index with args',index, indexable);
+
     var key = indexable[0],
       value = indexable[1];
     if (index && key && value) {
