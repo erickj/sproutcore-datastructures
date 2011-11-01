@@ -13,12 +13,19 @@ DataStructures.SourceDestructor = {
     return this.get('sourceDestructor')
       && this.getPath('sourceDestructor.isDestroyed')
       && !this.get('isDestroyed');
-  }.property('sourceDestructor', 'sourceDestructor.isDestroyed'),
+  }.property('sourceDestructor'),
 
   _sd_sourceIsDestroyedObserver: function() {
     if (this.get('shouldDestroy')) {
       // TODO: should this be done in an +invokeLater+?
       this.destroy();
     }
-  }
+  },
+
+  _sourceDestructorDidDestroy: function() {
+    var sd = this.get('sourceDestructor');
+    if (sd && sd.get('isDestroyed')) {
+      this.notifyPropertyChange('sourceDestructor');
+    }
+  }.observes('*sourceDestructor.isDestroyed')
 };
