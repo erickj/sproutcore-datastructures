@@ -24,6 +24,7 @@ DataStructures.NormalKeyIndex = DataStructures.Index.extend({
   isNormalKeyIndex: YES,
 
   keyNormalize: function(key) {
+    if (SC.typeOf(key) == 'regexp') return key;
     return key
       .toString()
       .toLowerCase()

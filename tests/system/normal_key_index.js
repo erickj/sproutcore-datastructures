@@ -65,3 +65,22 @@ test("NormalKeyIndex can lookup all records", function() {
   var result = n.lookup();
   equals(result.get('length'),n.get('indexLength'), 'looking up with NO key should return all records');
 });
+
+test("NormalKeyIndex lookups can match on regexes", function() {
+  var fooObjs = [0,1,2,3,4,5,6,7,8,9,11].map(function(i) {
+    return {val: 'foo-%@'.fmt(i)};
+  });
+  var booObjs = [0,1,2,3,4,5,6,7,8,9,11].map(function(i) {
+    return {val: 'boo-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    n.insert.apply(n, ['foo'].concat(fooObjs));
+    n.insert.apply(n, ['boo'].concat(booObjs));
+  });
+
+  var result = n.lookup(/[fb]oo/,false);
+  var expected = fooObjs.length + booObjs.length;
+
+  equals(result.get('length'), expected, 'looking up with this regex should return %@ values'.fmt(expected));
+});
