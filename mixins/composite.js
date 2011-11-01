@@ -298,7 +298,7 @@ DataStructures.Composite = {
 // at the sip field of an existing contact.  it isn't populated.  to
 // populate run <contact>.notifyPropertyChange('compositeChildren')
 /*  }.property('isCompositePiece').cacheable(), */
-  }.property('isCompositePiece'),
+  }.property('isCompositePiece','compositeChildren').cacheable(), // EJ 11/2/11 - THIS MUST BE CACHEABLE - otherwise compositeProperty updates can take upwards of 1/2 a second w/ external observers requesting the compositeList
 
   compositeCompare: null,
   compositeSortChildren: function() {
