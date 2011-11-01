@@ -46,6 +46,14 @@ DataStructures.SubstringHash = DataStructures.NormalKeyIndex.extend({
 
   isSubstringHash: YES,
 
+  keyNormalize: function(key) {
+    if (SC.typeOf(key) == 'regexp') {
+      throw new Error('SubstringHash does not allow regex lookups.  That would take forever');
+    }
+
+    return key;
+  },
+
   // TODO: there is still a bug with false negatives - if the keyMax
   // is 4 and the key is robert - then the zeroIndexedStrings will
   // make sure keys "robert" and "rober" return matches - however the

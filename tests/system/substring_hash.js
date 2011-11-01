@@ -102,3 +102,19 @@ test("SubstringHash can lookup all records", function() {
   var result = h.lookup();
   equals(result.get('length'),h.get('indexLength'), 'looking up with NO key should return all records');
 });
+
+test("SubstringHash throws an error on regexp lookups", function() {
+  var objs = [0,1,2,3,4,5,6,7,8,9].map(function(i) {
+    return {val: 'value-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    h.insert.apply(h, ['foo'].concat(objs));
+  });
+
+  should_throw(function() { h.lookup(/foo/); }, null,
+               'regexp lookups in substring hashes should not be permitted. its performance suicide');
+
+  should_throw(function() { h.lookup(/foo/,false); }, null,
+               'it should also throw an error on doTransform=false');
+});

@@ -158,7 +158,16 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     var ret = SC.IndexSet.create();
 
     for(var i=0;i<lenKeys;i++) {
-      indexSetForKey = this._keyMap[keySet.objectAt(i)];
+      var tmpKey = keySet.objectAt(i);
+
+      if (tmpKey.test) { //regex
+        indexSetForKey = SC.IndexSet.create();
+        for (var p in this._keyMap) if (this._keyMap.hasOwnProperty(p) && tmpKey.test(p))
+          indexSetForKey.add(this._keyMap[p]);
+      } else {
+        indexSetForKey = this._keyMap[keySet.objectAt(i)];
+      }
+
       ret.add(indexSetForKey); // union the SC.IndexSets
     }
 

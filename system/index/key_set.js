@@ -73,7 +73,12 @@ DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
     var len = this.get('length'), key;
     for (var i=0;i<len;i++) {
       key = this.objectAt(i);
-      if (otherKeySet.contains(key)) ret.push(key);
+      if (SC.typeOf(key) == 'regexp') {
+        for (var j=0,innerLen=otherKeySet.get('length');j<innerLen;j++) {
+          var tmp = otherKeySet.objectAt(j);
+          if (key.test(tmp)) ret.push(tmp);
+        }
+      } else if (otherKeySet.contains(key)) ret.push(key);
     }
     return ret;
   }

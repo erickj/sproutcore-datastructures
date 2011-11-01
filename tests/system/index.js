@@ -483,3 +483,22 @@ test("Index lookups can return all records when no parameter is passed to lookup
   var result = i.lookup();
   equals(result.get('length'),i.get('indexLength'), 'looking up with NO key should return all records');
 });
+
+test("Index lookups can match on regexes", function() {
+  var fooObjs = [0,1,2,3,4,5,6,7,8,9,11].map(function(i) {
+    return {val: 'foo-%@'.fmt(i)};
+  });
+  var booObjs = [0,1,2,3,4,5,6,7,8,9,11].map(function(i) {
+    return {val: 'boo-%@'.fmt(i)};
+  });
+
+  SC.run(function() {
+    i.insert.apply(i, ['foo'].concat(fooObjs));
+    i.insert.apply(i, ['boo'].concat(booObjs));
+  });
+
+  var result = i.lookup(/[fb]oo/,false);
+  var expected = fooObjs.length + booObjs.length;
+
+  equals(result.get('length'), expected, 'looking up with this regex should return %@ values'.fmt(expected));
+});

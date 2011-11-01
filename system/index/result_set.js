@@ -88,7 +88,8 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
                     arguments);
     }
 
-    var intersection = keySet.intersection(this.get('keySet'));
+    // must call intersection on this.keySet if we are matching w/ regexs
+    var intersection = this.get('keySet').intersection(keySet);
 
     if (intersection && intersection.length) {
       if (this.DEBUG_RESULT_SET) SC.Logger.log('DS.ResultSet._indexDidChange: have key intersection', intersection);

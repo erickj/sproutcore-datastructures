@@ -192,3 +192,22 @@ test("Index.KeySet does return intersection", function() {
   ok(set.intersection(keySet2).isEqual([key]), 'set and keySet2 intersection should be [%@]'.fmt(key));
   equals(set.intersection(keySet3).length, 0, 'set and keySet3 should have an empty intersection');
 });
+
+test("Index.KeySet can use regexp to compare intersections", function() { // not recommended
+  var set = Klass.create().set('keys',['foo','moo','mop']);
+
+  var ooKey = Klass.create().set('keys',/oo/);
+  var mKey = Klass.create().set('keys',/^m/);
+
+  var ooIntersection = ooKey.intersection(set);
+  var mIntersection = mKey.intersection(set);
+
+  ok(ooIntersection.get('length') == 2, 'ooIntersection should have 2 elements');
+  ok(mIntersection.get('length') == 2, 'mIntersection should have 2 elements');
+
+  equals(ooIntersection.objectAt(0),'foo');
+  equals(ooIntersection.objectAt(1),'moo');
+
+  equals(mIntersection.objectAt(0),'moo');
+  equals(mIntersection.objectAt(1),'mop');
+});
