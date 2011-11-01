@@ -77,6 +77,7 @@ var setupArrayObservers = function(arrayLikeObject) {
       didChangeArgs.start = start;
       didChangeArgs.removed = removed;
       didChangeArgs.added = added;
+      didChangeArgs.length = arrayLikeObject.length;
     };
 
   var willChangeArgs = { count: 0, added: 0, removed: 0 },
@@ -84,6 +85,7 @@ var setupArrayObservers = function(arrayLikeObject) {
       willChangeArgs.start = start;
       willChangeArgs.removed = removed;
       willChangeArgs.added = added;
+      willChangeArgs.length = arrayLikeObject.length;
     };
 
   SC.run(function() {
@@ -153,16 +155,32 @@ test("Index.ResultSet calls array observers on removals", function() {
   equals(didChangeArgs.added, 5, 'prereq - didChange should track 5 additions on load');
 
   SC.run(function() {
-    index.remove(key,values[0],values[1]);
+    index.remove(key,values[1]);
   });
 
-  SC.Logger.warn('TODO: fix this test once the TODO at DS.ResultSet+_arrayChangeNotificationObserver+ is fixed');
-  equals(willChangeArgs.start,0,'willChange.start should be tracked at 0 on load: ONLY TEMPORARY - see warning log');
-  equals(didChangeArgs.start,0,'didChange.start should be tracked at 0 on load: ONLY TRACKED - see warning log');
+  equals(willChangeArgs.start,1,'willChange.start should be tracked at 1 on load');
+  equals(didChangeArgs.start,1,'didChange.start should be tracked at 1 on load');
 
-  equals(willChangeArgs.removed, 2, 'willChange should track 2 removals after removal');
-  equals(didChangeArgs.removed, 2, 'didChange should track 2 removals after removal');
+  equals(willChangeArgs.length, 5, 'willChangeArgs.length should be set to the pre-modified length');
+  equals(didChangeArgs.length, 4, 'didChangeArgs.length should be set to the new length');
 
-  equals(willChangeArgs.added, 0, 'willChange should track no additions after removal');
-  equals(didChangeArgs.added, 0, 'didChange should track no additions after removal');
+  equals(willChangeArgs.removed, 1, 'willChange should track 1 removal');
+  equals(didChangeArgs.removed, 1, 'didChange should track 1 removal');
+
+  equals(willChangeArgs.added, 0, 'willChange should track no additions');
+  equals(didChangeArgs.added, 0, 'didChange should track no additions');
+
+  // reinsert into empty hole
+  SC.run(function() {
+    index.insert(key,values[1]);
+  });
+
+  equals(willChangeArgs.start,1,'willChange.start should be tracked at 1 on load');
+  equals(didChangeArgs.start,1,'didChange.start should be tracked at 1 on load');
+
+  equals(willChangeArgs.removed, 0, 'willChange should track 0 removal on reinsert');
+  equals(didChangeArgs.removed, 0, 'didChange should track 0 removal on reinsert');
+
+  equals(willChangeArgs.added, 1, 'willChange should track 1 addition at reinsert');
+  equals(didChangeArgs.added, 1, 'didChange should track 1 addition at reinsert');
 });

@@ -102,7 +102,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
     var set = this.get('indexSet');
     if (!(set && set.get('isIndexSet'))) return;
 
-    var prevLength = this._prevIndexSetLen ? this._prevIndexSetLen : 0;
+    var prevLength = this.get('length') ? this.get('length') : 0;
     var diff = set.get('length') - prevLength;
 
     // TODO: this is technically incorrect - but oh well, it won't be
@@ -120,26 +120,56 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
     var added = isAdd ? Math.abs(diff) : 0;
     var removed = isAdd ? 0 : Math.abs(diff);
 
-    // TODO: in the removal case using a start value of 0 is
-    // technically wrong.  however the calculation is extremely
-    // involved and I am just making a quick fix here.  i belive 0
-    // works in all cases however because it will invoke a left shift
-    // on the index set thus causing any query array that wraps this
-    // result set to trigger.  the downside here is that it is
-    // inefficient
-    var start = isAdd ? prevLength : 0;
+    var start = this._calculateStartIndexOnChange(isAdd);
 
     this.arrayContentWillChange(start,removed,added);
+
+    this.set('length',set.get('length'));
+
     this.arrayContentDidChange(start,removed,added);
 
     if (this.DEBUG_RESULT_SET) SC.Logger.log('Result Set content changed',[start,removed,added]);
     this._prevIndexSetLen = set.get('length');
+
+    this._clone = []; // this is used by _calculateStartIndexOnChange for historical comparison
+    for (var i=0;i<this.get('length');i++)
+      this._clone[this._clone.length] = this.objectAt(i);
   }.observes('indexSet'),
 
+  // need to calculate the right deltas for incremental changes for query arrays
+  _calculateStartIndexOnChange: function(isAdd) {
+    if (!this._clone) return 0;
+
+    var ret;
+    for (var i=0;i<this.get('length');i++) {
+      ret = i;
+      if (this.objectAt(i) !== this._clone[i]) break;
+
+      if (isAdd && i==this.get('length')-1) ret += 1;
+    }
+
+    return ret;
+  },
+
+  _teardownContentObservers: function() {
+    // avoid error: "Uncaught TypeError: Cannot call method '_kvo_for' of null"
+    // when ranges are removed from this.index
+    //
+    // this is a hacky override of _teardownContentObservers.  when I
+    // implemented the array observers above w/
+    // _arrayChangeNotificationObserver I don't have access to the
+    // remove (or add) ranges at the appropriate time for the
+    // arrayContentWillChange function call, so by the time
+    // _teardownContentObservers tries to run all the values are
+    // already removed and null - it throws the messy error above.
+    // (try digging into _indexWillChange to figure out why for
+    // yourself - hint start in DS.Index.remove).  since i haven't
+    // implmenented range observers I think overriding this is safe
+    // here.
+  },
+
   /* SC.Array.prototype overrides */
-  length: function() {
-    return this.getPath('indexSet.length') || 0;
-  }.property('[]'),
+  length: 0,
 
   objectAt: function(idx) {
     var indexSet = this.get('indexSet'),
