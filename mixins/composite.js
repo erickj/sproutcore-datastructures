@@ -11,6 +11,8 @@
 */
 DataStructures.Composite = {
 
+  taskQueue: DS.bgTasks,
+
   /**
     Walk like a duck.
     @type Boolean
@@ -655,38 +657,40 @@ DataStructures.Composite = {
       if (this.DEBUG_COMPOSITE)
         SC.Logger.log('%@ - adding notification for key %@'.fmt(p.toString(), key));
 
-      this.invokeLast(function() {
-        if (!p.get('isCompositePiece')) return;
+//      this.invokeLast(function() {
+        var t = SC.Task.create({ run: function() {
+          if (!this.get('isCompositePiece')) return;
 
-        if (this.DEBUG_COMPOSITE)
-          SC.Logger.group('invokeLast: notifications for parent: ',SC.hashFor(p));
-
-        var parentCompProps = p.get('compositeProperties'),
-          args = p._cmpst_pendingNotifications[key],
-          rev = args[3];
-
-        // parent already knows this property
-        if (parentCompProps.indexOf(key) >= 0) {
           if (this.DEBUG_COMPOSITE)
-            SC.Logger.log('alerting parent about known property change',key,rev);
+            SC.Logger.group('invokeLast: notifications for parent: ',SC.hashFor(this));
 
-          p.notifyPropertyChange(key);
+          var parentCompProps = this.get('compositeProperties'),
+            args = this._cmpst_pendingNotifications[key],
+            rev = args[3];
 
-        // this property is a new one to the parent
-        } else {
-          if (this.DEBUG_COMPOSITE)
-            SC.Logger.log('alerting parent about NEW property change',key,rev);
+          // parent already knows this property
+          if (parentCompProps.indexOf(key) >= 0) {
+            if (this.DEBUG_COMPOSITE)
+              SC.Logger.log('alerting parent about known property change',key,rev);
 
-          p._cmpst_notifyOfChildProvidedCompositePropertiesChange(that);
-        }
+            this.notifyPropertyChange(key);
+          // this property is a new one to the parent
+          } else {
+            if (this.DEBUG_COMPOSITE)
+              SC.Logger.log('alerting parent about NEW property change',key,rev);
 
-        if (this.DEBUG_COMPOSITE) {
-          SC.Logger.log('end notifications for parent: ',SC.hashFor(p));
-          SC.Logger.groupEnd();
-        }
+            this._cmpst_notifyOfChildProvidedCompositePropertiesChange(that);
+          }
 
-        p._cmpst_pendingNotifications[key] = null;
+          if (this.DEBUG_COMPOSITE) {
+            SC.Logger.log('end notifications for parent: ',SC.hashFor(this));
+            SC.Logger.groupEnd();
+          }
+
+          this._cmpst_pendingNotifications[key] = null;
+        }.bind(p)
       });
+      this.get('taskQueue').push(t);
     },this);
   },
 

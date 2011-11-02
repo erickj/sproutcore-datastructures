@@ -5,6 +5,17 @@
 // ==========================================================================
 /*globals DataStructures module test ok equals same stop start MyApp */
 
+SC.mixin(DS.Composite, {
+  taskQueue: SC.TaskQueue.create({
+    runLimit: 10000000000000000,
+    _taskCountObserver: function() {
+      this.invokeLast(function() {
+                        this.run();
+                      });
+    }.observes('taskCount')
+  })
+});
+
 var Part, Car;
 var basicInterface = [
   'addCompositeChild',
