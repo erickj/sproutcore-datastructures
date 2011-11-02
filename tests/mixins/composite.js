@@ -644,6 +644,36 @@ test("compositeProperties should be observable and propogate changes up the comp
   equals(forest._unboundValue, 1400, 'composite should update on removal');
 });
 
+test("composite shoudl propogate new computed properties even in the face of caching", function() {
+  var Comp = SC.Object.extend(DataStructures.Composite);
+
+  var contact = Comp.create();
+  var ident = Comp.create();
+  var detail = Comp.create({
+    compositeProperties: ['name'],
+    name: 'Fozzy Bear'
+  });
+
+  SC.run(function() {
+    ident.addCompositeChild(detail);
+    contact.addCompositeChild(ident);
+  });
+
+  equals(contact.get('name'), 'Fozzy Bear', 'prereq - contact should have name Fozzy Bear');
+
+  var decorativeDetail = Comp.create({
+    compositeProperties: ['hairColor'],
+    hairColor: 'brown'
+  });
+
+  SC.run(function() {
+    detail.addCompositeChild(decorativeDetail);
+  });
+
+  contact.compositeInspect();
+  equals(contact.get('hairColor'), 'brown', 'contact should have hairColor');
+});
+
 test("dynamic composite properties aren't totally fucking insane", function() {
   var UPSTruck = SC.Object.extend(DataStructures.Composite, {
     compositeProperties: ['cargo'],
