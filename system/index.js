@@ -506,9 +506,9 @@ DataStructures.Index = DataStructures.Index.extend({
     keySet = this._keySetForKey(key);
     keySet.addKeys(DataStructures.Index.LOOKUP_KEY_ALL);
 
-    this.indexContentWillChange(keySet, 0, vals.length);
+//    this.indexContentWillChange(keySet, 0, vals.length);
     ret = sc_super();
-    this.indexContentDidChange(keySet, 0, vals.length);
+//    this.indexContentDidChange(keySet, 0, vals.length);
 
     return ret;
   },
@@ -520,9 +520,9 @@ DataStructures.Index = DataStructures.Index.extend({
     keySet = this._keySetForKey(key);
     keySet.addKeys(DataStructures.Index.LOOKUP_KEY_ALL);
 
-    this.indexContentWillChange(keySet, vals.length, 0);
+//    this.indexContentWillChange(keySet, vals.length, 0);
     ret = sc_super();
-    this.indexContentDidChange(keySet, vals.length, 0);
+//    this.indexContentDidChange(keySet, vals.length, 0);
 
     return ret;
   },
