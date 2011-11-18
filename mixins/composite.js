@@ -554,15 +554,9 @@ DataStructures.Composite = {
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('%@ at %@ - key = %@ compositeChildrenDidChange'.fmt(this.toString(), rev, key),  SC.A(arguments).join(':'));
 
-    this._cmpst_clearCompositeListCache();
-  },
-
-  _cmpst_clearCompositeListCache: function() {
     this.notifyPropertyChange('compositeList');
-
-    this._cmpst_Parents.forEach(function (p) {
-      if (!arguments[0]) return;
-      p.notifyPropertyChange('compositeList');
+    this.get('compositeParents').forEach(function(p) {
+      p.notifyPropertyChange('compositeChildren');
     });
   },
 
