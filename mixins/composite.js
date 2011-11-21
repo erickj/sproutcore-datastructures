@@ -305,7 +305,10 @@ DataStructures.Composite = {
 
   compositeCompare: null,
   compositeSortChildren: function() {
-    var children = this.compositeChildren.compact(),
+    // make sure to take a copy here so we don't sort in place.
+    // removing child composites relies on consistent indices in the
+    // array since they are cached for fast lookup
+    var children = this.compositeChildren.compact().copy(),
       that = this,
       boundCompareFn = this.compositeCompare && function() {
         return that.compositeCompare.apply(that, arguments);
