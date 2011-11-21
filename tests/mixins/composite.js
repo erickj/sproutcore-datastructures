@@ -446,7 +446,6 @@ test("compositeList is observable", function() {
 
   soapBoxCar.removeCompositeChild(aPart);
   equals(soapBoxCar.get('numChildren'),0,'observer should fire for _compositeChildren after removing parts');
-
 });
 
 test("DataStructures.Composite can NOT add noncomposites", function() {
@@ -642,6 +641,50 @@ test("compositeProperties should be observable and propogate changes up the comp
 
   ok(!tree2.compositeHasChild(branch3), 'branch3 should not be in the composite');
   equals(forest._unboundValue, 1400, 'composite should update on removal');
+});
+
+test("composite should notify of property change when a composite child is removed", function() {
+  var Comp = SC.Object.extend(DataStructures.Composite);
+
+  SC.RunLoop.begin();
+  var contact = Comp.create({
+    propUpdateCounts: {},
+
+    _observer: function(target,key,val,rev) {
+      var c = this.propUpdateCounts[key] || 0;
+      this.propUpdateCounts[key] = c + 1;
+    }.observes('name','catchPhrase','fuzzy')
+  });
+
+  var ident = Comp.create({
+  });
+
+  var detail = Comp.create({
+    compositeProperties: ['name'],
+    name: 'Fozzy Bear'
+  });
+  var detail2 = Comp.create({
+    compositeProperties: ['catchPhrase','fuzzy'],
+    catchPhrase: 'Wokka-Wokka',
+    fuzzy: true
+  });
+
+  ident.addCompositeChild(detail);
+  ident.addCompositeChild(detail2);
+  contact.addCompositeChild(ident);
+  SC.RunLoop.end();
+
+  equals(contact.propUpdateCounts.name,1,'prereq - there should be 1 update for name');
+  equals(contact.propUpdateCounts.catchPhrase,1,'prereq - there should be 1 update for catchPhrase');
+  equals(contact.propUpdateCounts.fuzzy,1,'prereq - there should be 1 update for fuzzy');
+
+  SC.run(function() {
+    detail2.destroy();
+  });
+
+  equals(contact.propUpdateCounts.name,1,'there should be 1 update for name');
+  equals(contact.propUpdateCounts.catchPhrase,2,'there should be 2 update for catchPhrase after delete');
+  equals(contact.propUpdateCounts.fuzzy,2,'there should be 2 update for fuzzy after delete');
 });
 
 test("composite shoudl propogate new computed properties even in the face of caching", function() {
