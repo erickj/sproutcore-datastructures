@@ -13,6 +13,8 @@ module("DataStructures Query Array", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
+    qa = null;
+
     q = SC.Query.create({
       conditions: CONDITION
     });
@@ -131,26 +133,33 @@ test("QueryArrays have observable enumerable content", function() {
   //
   var peepingTom = SC.Object.create({
     enumDidChange: false,
-    lenDidChange: false,
+
+    qaLenDidChange: false,
+    boundLenDidChange: false,
 
     queryArray: qa,
     length: null,
+
     init: function() {
       var ret = sc_super();
       this.bind('length', this.get('queryArray'), 'length');
       return ret;
     },
 
-    _lenObserver: function() {
-      this.lenDidChange = true;
+    _boundLenObserver: function() {
+      this.boundLenDidChange = true;
+    }.observes('length'),
+
+    _qalenObserver: function() {
+      this.qaLenDidChange = true;
     }.observes('.queryArray.length'),
+
     _enumObserver: function() {
       this.enumDidChange = true;
     }.observes('.queryArray.[]'),
 
     _starCount: 0,
     _starObserver: function() {
-      console.warn('starObserver', arguments);
       this._starCount++;
     }.observes('*queryArray.*')
   });
@@ -166,8 +175,11 @@ test("QueryArrays have observable enumerable content", function() {
   testCompareQueryArrayValues(qa, initialState, 'prereq 4 -');
   ok(c > lastCount, 'prereq - count should have been up\'d for an object add');
   ok(peepingTom.enumDidChange, 'external observer should see enumerable content changes');
-  ok(peepingTom.get('length'), qa.get('length'), 'qa properties are bindable');
   ok(peepingTom._starCount > 0, 'startCount should be > 0');
+
+  ok(peepingTom.qaLenDidChange, 'qa length is observable');
+  ok(peepingTom.boundLenDidChange, 'bound length is observable');
+  ok(peepingTom.get('length') == qa.get('length'), 'qa length property is bindable');
 });
 
 
