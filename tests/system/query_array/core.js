@@ -304,6 +304,9 @@ test("QueryArray MUST be given a query object the responds to +contains+", funct
   } catch(e) {
     err = e;
     caught++;
+
+    if (SC.RunLoop.isRunLoopInProgress)
+      SC.RunLoop.end(); // need to end the existed run loop
   }
 
   ok(caught == 1, "setting a query object with no +contains+ method throws an error");
