@@ -32,7 +32,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
     set.source = index;
 
     return set;
-  }.property('keySet', 'index', 'doKeyTransform').cacheable(),
+  }.property('keySet', 'index', 'doKeyTransform'),//.cacheable(),
 
   // you probably just want to leave this alone
   doKeyTransform: NO,

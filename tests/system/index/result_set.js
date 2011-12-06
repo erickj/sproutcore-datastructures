@@ -335,3 +335,13 @@ test("Index.ResultSet do return undefined for +objectAt+ when its index is destr
   resultSet.get('index').destroy();
   same(resultSet.objectAt(0),undefined, 'index isDestroyed -> returns undefined');
 });
+
+test("Index.ResultSet should change its results when the key set changes", function() {
+  var emptyKeySet = DS.Index.KeySet.create();
+  loadResultSet(resultSet,emptyKeySet,index);
+
+  equals(resultSet.get('length'), 0, 'prereq - result set should have 0 values');
+
+  resultSet.set('keySet',key);
+  equals(resultSet.get('length'), values.length, 'result set should update its values list');
+});
