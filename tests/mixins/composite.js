@@ -58,13 +58,18 @@ module("DataStructures Composite Mixin", {
     });
 
     DS.TRACK_STATS = YES;
+    SC.AUDIT_OBSERVERS = YES;
+    SC.ObserverAuditLog.clear();
   },
 
   teardown: function() {
+    SC.AUDIT_OBSERVERS = NO;
+    DS.TRACK_STATS = NO;
+
     SC.run(function() {
       SC.Logger.log('teardown runloop execute');
       DS.FunctionStats.dump().clear();
-      DS.TRACK_STATS = NO;
+      SC.ObserverAuditLog.dump().clear();
     });
     SC.Logger.log('--> Teardown Test: "%@"'.fmt(this.working.test));
     SC.Logger.groupEnd();

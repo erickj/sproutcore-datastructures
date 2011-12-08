@@ -81,6 +81,14 @@ LOG: 0,16,0,0,15,16,0,0,15,0,16,16,0,15,0,16,0,16,0,15,0,16,0,15,0,16,0,0,16,15,
  *
  * for the time being i'm going to ignore this problem
  */
+SC.mixin(DS.Composite, {
+  taskQueue: SC.TaskQueue.create({
+    runLimit: 10000000000000000,
+    _taskCountObserver: function() {
+      this.run();
+    }.observes('taskCount')
+  })
+});
 
 test("test load for aggregating composites", function() {
   var Forest = SC.Object.extend(DataStructures.Composite, {
@@ -123,6 +131,9 @@ test("test load for aggregating composites", function() {
   var trees = [];
   var leafTimes = [], branchTimes = [], treeTimes = [], branchLeafTimes = [];
   var runLoopWrapUpTimeStart, runLoopStartTime = new Date();
+
+  SC.AUDIT_OBSERVERS = YES;
+  SC.ObserverAuditLog.clear();
 
   SC.run(function() {
 //    SC.LOG_OBSERVERS = YES;
@@ -211,6 +222,9 @@ test("test load for aggregating composites", function() {
   var runLoopEndTime = new Date(),
     runLoopWrapUpTime = runLoopEndTime - runLoopWrapUpTimeStart,
     runLoopTotalTime = runLoopEndTime - runLoopStartTime;
+
+  SC.AUDIT_OBSERVERS = NO;
+  SC.ObserverAuditLog.dump().clear();
 
   SC.Logger.log('end run loop: ', runLoopTotalTime);
   SC.Logger.log('wrap up time: ', runLoopWrapUpTime);
