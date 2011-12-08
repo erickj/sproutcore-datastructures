@@ -37,6 +37,17 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   isIndex: YES,
 
   init: function() {
+    this._reset();
+    return sc_super();
+  },
+
+  destroy: function() {
+    this._reset();
+    this._innerCacheDisable();
+    return sc_super();
+  },
+
+  _reset: function() {
     this._keyMap = {};        // { key => SC.IndexSet }
     this._reverseKeyMap = {}; // hashFor(obj) => [key, key, key] }
     this._valueList = [];     // [obj,obj,obj]
@@ -50,18 +61,9 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
     this._nextInsertionPoint = [];
 
     this.set('length',0);
-    return sc_super();
-  },
 
-  destroy: function() {
-    delete this._keyMap;
-    delete this._reverseKeyMap;
-    delete this._valueList;
-    delete this._valueMap;
-    delete this._nextInsertionPoint;
-    delete this._keyTransformCache;
-    this.set('length', 0);
-    return sc_super();
+    this._innerCacheDisable();
+    this._innerCacheEnable();
   },
 
   /**
@@ -566,6 +568,8 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
  * hash table management.
  */
 DataStructures.Index = DataStructures.Index.extend({
+  OBSERVING_ENABLED: YES,
+
   insert: function(key, val /*,val2,val3,...valN */) {
     var ret, keySet,
       vals = SC.A(arguments).slice(1);
@@ -573,9 +577,13 @@ DataStructures.Index = DataStructures.Index.extend({
     keySet = this._keySetForKey(key);
     keySet.addKeys(DataStructures.Index.LOOKUP_KEY_ALL);
 
-//    this.indexContentWillChange(keySet, 0, vals.length);
+    if (this.OBSERVING_ENABLED) {
+      this.indexContentWillChange(keySet, 0, vals.length);
+    }
     ret = sc_super();
-//    this.indexContentDidChange(keySet, 0, vals.length);
+    if (this.OBSERVING_ENABLED) {
+      this.indexContentDidChange(keySet, 0, vals.length);
+    }
 
     return ret;
   },
@@ -587,9 +595,13 @@ DataStructures.Index = DataStructures.Index.extend({
     keySet = this._keySetForKey(key);
     keySet.addKeys(DataStructures.Index.LOOKUP_KEY_ALL);
 
-//    this.indexContentWillChange(keySet, vals.length, 0);
+    if (this.OBSERVING_ENABLED) {
+      this.indexContentWillChange(keySet, vals.length, 0);
+    }
     ret = sc_super();
-//    this.indexContentDidChange(keySet, vals.length, 0);
+    if (this.OBSERVING_ENABLED) {
+      this.indexContentDidChange(keySet, vals.length, 0);
+    }
 
     return ret;
   },
