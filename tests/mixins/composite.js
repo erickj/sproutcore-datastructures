@@ -9,9 +9,7 @@ SC.mixin(DS.Composite, {
   taskQueue: SC.TaskQueue.create({
     runLimit: 10000000000000000,
     _taskCountObserver: function() {
-      this.invokeLast(function() {
-                        this.run();
-                      });
+      this.run();
     }.observes('taskCount')
   })
 });
@@ -324,7 +322,9 @@ test("composite supplant", function() {
   equals(camaro.getHorsePower(), 400, 'camaro should have children as normal');
   equals(camaro2011.getHorsePower(), 300, 'camaro2011 should have no children');
 
-  camaro2011.compositeSupplant(camaro);
+  SC.run(function() {
+    camaro2011.compositeSupplant(camaro);
+  });
 
   equals(camaro2011.getHorsePower(), 450, 'camaro2011 should have camaro\'s children');
   equals(camaro.getHorsePower(), 250, 'camaro should have no children now');
@@ -354,13 +354,21 @@ test("a composite can add/remove children and perform operations", function () {
     horsePower: 50
   });
 
-  v8Engine.addCompositeChild(superCharger);
-  equals(v8Engine.getWeight(), 310, 'calculating engine weight');
+  SC.run(function() {
+    v8Engine.addCompositeChild(superCharger);
+    camaro.addCompositeChild(v8Engine);
+  });
 
-  camaro.addCompositeChild(v8Engine);
+  equals(v8Engine.getWeight(), 310, 'calculating engine weight');
   equals(camaro.getWeight(), 2310, 'calculating modified camaro weight');
 
-  ok(v8Engine.removeCompositeChild(superCharger), 'should be able to remove superCharger');
+  var removeSuccess;
+  SC.run(function() {
+    removeSuccess = v8Engine.removeCompositeChild(superCharger);
+  });
+
+  ok(removeSuccess, 'should be able to remove superCharger');
+
   equals(v8Engine.get('compositeList').length, 1, 'composite list length is 1');
   equals(v8Engine.getWeight(), 300, 'calculating un-supercharged engine weight');
   equals(camaro.getWeight(), 2300, 'calculating un-supercharged camaro weight');
@@ -370,7 +378,10 @@ test("a composite can add/remove children and perform operations", function () {
     horsePower: null
   });
 
+  SC.RunLoop.begin();
   camaro.addCompositeChild(racingSeats);
+  SC.RunLoop.end();
+
   equals(camaro.getWeight(), 2350, 'weigth with racing seats');
   equals(camaro.getHorsePower(), 350, 'racing seats shouldn\'t affect hp');
 
@@ -380,7 +391,10 @@ test("a composite can add/remove children and perform operations", function () {
     horsePower: 280
   });
 
+  SC.RunLoop.begin();
   v8Engine.addCompositeParent(mustang);
+  SC.RunLoop.end();
+
   equals(mustang.getWeight(), 2500, 'can also add composite pieces bottom up');
 
   var restrictorPlate = Part.create({
@@ -388,7 +402,10 @@ test("a composite can add/remove children and perform operations", function () {
     horsePower: -50
   });
 
+  SC.RunLoop.begin();
   restrictorPlate.addCompositeParent(v8Engine);
+  SC.RunLoop.end();
+
   equals(mustang.getHorsePower(), 330, 'deeper bottom up composite addition');
   equals(camaro.getHorsePower(), 300, 'deeper bottom up composite addition');
 });
@@ -441,10 +458,16 @@ test("compositeList is observable", function() {
     weight: 5
   });
 
+  SC.RunLoop.begin();
   soapBoxCar.addCompositeChild(aPart);
+  SC.RunLoop.end();
+
   equals(soapBoxCar.get('numChildren'),1,'observer should fire for _compositeChildren after adding parts');
 
+  SC.RunLoop.begin();
   soapBoxCar.removeCompositeChild(aPart);
+  SC.RunLoop.end();
+
   equals(soapBoxCar.get('numChildren'),0,'observer should fire for _compositeChildren after removing parts');
 });
 
@@ -542,6 +565,7 @@ test("compositeProperties should be observable and propogate changes up the comp
   });
 
   Tree = SC.Object.extend(DataStructures.Composite, {
+    DEBUG_COMPOSITE: YES,
     compositeProperties: ['leaves', 'branches'],
     compositeParents: forest,
     leaves: null,
@@ -567,15 +591,16 @@ test("compositeProperties should be observable and propogate changes up the comp
   SC.Logger.log('end creating tree 2');
   SC.RunLoop.end();
 
+  equals(forest._unboundValue, 120, 'forest should have 120 leaves');
+
   ok(tree1.compositeProperties.indexOf('branches') > -1, "branches should be in tree1's compositeProperties array");
 
   var branches = forest.get('branches'),
     branchCount = branches.reduce(function(p,c) {
       return p+c;
     });
-  equals(branchCount, 2, '2 branches should have been auto added to the compositeProp list (one from each tree)');
+  equals(branchCount, 2, '2 branches should have been auto added to the compositeProperty list (one from each tree)');
 
-  equals(forest._unboundValue, 120, 'forest should have 120 leaves');
   [20,100].forEach(function(i) {
     var leaves = forest.get('leaves');
     ok(leaves.indexOf(i) > -1, "%@ should be in array".fmt(i));
@@ -810,11 +835,13 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
   equals(_1955.get('characters').length, 7, '1985 has 7 characters');
   equals(_1885.get('characters').length, 4, '1885 has 4 characters');
 
+  SC.RunLoop.begin();
   var timeTrain = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['characters'],
     compositeParents: [_1985, _1885],
     characters: ['Wild West Doc Brown', 'Mrs. Clara Brown']
   });
+  SC.RunLoop.end();
 
   equals(_1985.get('characters').length, 4, 'after train enters 1985 and 1885, 1985 has 4 characters');
   equals(_1955.get('characters').length, 7, 'after train enters 1985 and 1885, 1985 has 7 characters');
@@ -862,21 +889,25 @@ test("allow modifying composite DAGs via altering compositeParents prop", functi
  * if the composite is a leaf return the current value as is
  */
 test('orig values remain as primitive or array', function() {
+  SC.RunLoop.begin();
   var aComposite = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['anArray', 'aPrimitive'],
     anArray: [1],
     aPrimitive: 1
   });
+  SC.RunLoop.end();
 
   ok(aComposite.get('aPrimitive') === 1, 'aPrimitive should equal 1 - while aComposite is a leaf');
   ok(aComposite.get('anArray').indexOf(1) >= 0, 'anArray should contain "1"');
 
+  SC.RunLoop.begin();
   var aCompositeChild = SC.Object.create(DataStructures.Composite, {
     compositeProperties: ['anArray', 'aPrimitive'],
     compositeParents: [aComposite],
     anArray: ['d','e','f'],
     aPrimitive: null
   });
+  SC.RunLoop.end();
 
   aComposite.set('aPrimitive',2);
   aComposite.set('anArray',['a','b','c']);

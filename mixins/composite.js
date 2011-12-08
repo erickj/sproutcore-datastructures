@@ -354,7 +354,7 @@ DataStructures.Composite = {
     }
 
     if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('%@ - pushing object on compositeChildren'.fmt(this.toString()));
+      SC.Logger.log('Composite.addCompositeChild: %@ (%@) added composite child: %@ (%@)'.fmt(this.toString(),SC.hashFor(this),c.toString(),SC.hashFor(c)));
 
     this.compositeChildren.pushObject(c);
 
@@ -554,14 +554,24 @@ DataStructures.Composite = {
     }
   },
 
+  _cmpst_unbound_compositeChildrenDidChangeScheduled: null,
   _cmpst_unbound_compositeChildrenDidChange: function(target,key,val,rev) {
-    if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('%@ at %@ - key = %@ compositeChildrenDidChange'.fmt(this.toString(), rev, key),  SC.A(arguments).join(':'));
+    if (this._cmpst_unbound_compositeChildrenDidChangeScheduled) return;
 
-    this.notifyPropertyChange('compositeList');
-    this.get('compositeParents').forEach(function(p) {
-      p.notifyPropertyChange('compositeChildren');
-    });
+    if (this.DEBUG_COMPOSITE)
+      SC.Logger.log('Composite._cmpst_unbound_compositeChildrenDidChange: %@ (%@) at %@ - key = %@ compositeChildrenDidChange'.fmt(this.toString(), SC.hashFor(this), rev, key),  SC.A(arguments).join(':'));
+
+    var task = SC.Task.create({ run: function() {
+      this.notifyPropertyChange('compositeList');
+      this.get('compositeParents').forEach(function(p) {
+        p.notifyPropertyChange('compositeChildren');
+      });
+      this._cmpst_unbound_compositeChildrenDidChangeScheduled = false;
+    }.bind(this)});
+
+    this._cmpst_unbound_compositeChildrenDidChangeScheduled = true;
+
+    this.get('taskQueue').push(task);
   },
 
   /**
@@ -576,13 +586,13 @@ DataStructures.Composite = {
    */
   _cmpst_unbound_compositeParentsDidChange: function() {
     if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('%@ - compositeParentsDidChange'.fmt(this.toString()), SC.A(arguments).join(':'));
+      SC.Logger.log('Composite._cmpst_unbound_compositeParentsDidChange: %@ - compositeParentsDidChange'.fmt(this.toString()), SC.A(arguments).join(':'));
 
     this.get('compositeParents').forEach(function compositeParentsIterator(p) {
       if (!arguments[0]) return;
 
       if (this.DEBUG_COMPOSITE)
-        SC.Logger.log('%@ adding child %@ - has child'.fmt(p.toString(), this.toString()), p.compositeHasChild(this));
+        SC.Logger.log('Composite._cmpst_unbound_compositeParentsDidChange: %@ adding child %@ - has child'.fmt(p.toString(), this.toString()), p.compositeHasChild(this));
       p.addCompositeChild(this);
     },this);
   },
@@ -592,15 +602,16 @@ DataStructures.Composite = {
    *
    * propogates properties from composite children into this object
    */
-  _cmpst_notifyOfChildProvidedCompositePropertiesChange: function(child) {
+  _cmpst_notifyOfChildProvidedCompositePropertiesChange: function(child,keys) {
     if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('%@ - notified of child %@ property changes'.fmt(this.toString(), child.toString()));
+      SC.Logger.log('Composite._cmpst_notifyOfChildProvidedCompositePropertiesChange: %@ (%@) - notified of child %@ (%@) property changes'.fmt(this.toString(), SC.hashFor(this), child.toString(),SC.hashFor(this)));
 
-    var childCompProps = child.get('compositeProperties'),
-      myCompProps = this.get('compositeProperties');
+    keys = keys ? SC.A(keys) : child.get('compositeProperties');
+    var myCompProps = this.get('compositeProperties');
 
     var changed = false;
-    childCompProps.forEach(function childCompPropsIterator(p) {
+
+    keys.forEach(function childCompPropsIterator(p) {
       if (!arguments[0]) return;
       if (myCompProps.indexOf(p) < 0) {
         myCompProps.push(p); // avoid sending KVO notifications now
@@ -628,7 +639,7 @@ DataStructures.Composite = {
    */
   _cmpst_unbound_ownPropertyDidChange: function(target, key, value, rev) {
     if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('%@ - own property'.fmt(this.toString()),key,'did change', SC.A(arguments).join(':'));
+      SC.Logger.log('Composite._cmpst_unbound_ownPropertyDidChange: %@ - own property'.fmt(this.toString()),key,'did change', SC.A(arguments).join(':'));
 
     var parents = this._cmpst_Parents,
       args = SC.A(arguments);
@@ -640,53 +651,32 @@ DataStructures.Composite = {
       // it on the NEXT run loop
       var that = this;
 
-      if (!p._cmpst_pendingNotifications) {
-        p._cmpst_pendingNotifications = {};
+      if (p._cmpst_pendingNotifications) {
+        p._cmpst_pendingNotifications = p._cmpst_pendingNotifications.concat(key).uniq();
+        return; // don't schedule the task - its already scheduled
+      } else {
+        p._cmpst_pendingNotifications = [key];
       }
-
-      if (p._cmpst_pendingNotifications[key]) {
-        // update the pending notification w/ the lastest args
-        // but don't reschedule the invokeLast
-        p._cmpst_pendingNotifications[key] = args;
-        return;
-      }
-
-      p._cmpst_pendingNotifications[key] = args;
 
       if (this.DEBUG_COMPOSITE)
-        SC.Logger.log('%@ - adding notification for key %@'.fmt(p.toString(), key));
+        SC.Logger.log('Composite._cmpst_unbound_ownPropertyDidChange: child %@ adding notification for parent %@ on key %@'.fmt(this.toString(), p.toString(), key));
 
-//      this.invokeLast(function() {
       var t = SC.Task.create({ run: function() {
         if (!this.get('isCompositePiece')) return;
 
-        if (this.DEBUG_COMPOSITE)
-          SC.Logger.group('invokeLast: notifications for parent: %@'.fmt(SC.hashFor(this)));
-
-        var parentCompProps = this.get('compositeProperties'),
-          args = this._cmpst_pendingNotifications[key],
-          rev = args[3];
-
-        // parent already knows this property
-        if (parentCompProps.indexOf(key) >= 0) {
-          if (this.DEBUG_COMPOSITE)
-            SC.Logger.log('alerting parent about known property change',key,rev);
-
-          this.notifyPropertyChange(key);
-        // this property is a new one to the parent
-        } else {
-          if (this.DEBUG_COMPOSITE)
-            SC.Logger.log('alerting parent about NEW property change',key,rev);
-
-          this._cmpst_notifyOfChildProvidedCompositePropertiesChange(that);
+        var keys = this._cmpst_pendingNotifications;
+        if (this.DEBUG_COMPOSITE) {
+          SC.Logger.group('Composite._cmpst_unbound_ownPropertyDidChange.task:');
+          SC.Logger.log('update notifications for parent: %@ on keys:'.fmt(SC.hashFor(this)),keys);
         }
 
+        this._cmpst_notifyOfChildProvidedCompositePropertiesChange(that,keys);
+
         if (this.DEBUG_COMPOSITE) {
-          SC.Logger.log('end notifications for parent: ',SC.hashFor(this));
           SC.Logger.groupEnd();
         }
 
-        this._cmpst_pendingNotifications[key] = null;
+        this._cmpst_pendingNotifications = null;
       }.bind(p)});
       this.get('taskQueue').push(t);
     },this);
@@ -698,7 +688,7 @@ DataStructures.Composite = {
    */
   _cmpst_unbound_compositePropertiesDidChange: function(target, key, value, rev) {
     if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('%@ - compositePropertiesDidChange'.fmt(this.toString()), SC.A(arguments).join(": "));
+      SC.Logger.log('Composite._cmpst_unbound_compositePropertiesDidChange: for object %@'.fmt(this.toString()), SC.A(arguments).join(": "));
 
     this._cmpst_updateCompositePropertyMonitors();
   },
@@ -783,7 +773,7 @@ DataStructures.Composite = {
     }
 
     if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('added dynamic computed property %@ to '.fmt(prop),this);
+      SC.Logger.log('Composite._cmpst_addDynamicProperty: added dynamic computed property %@ to '.fmt(prop),this);
 
     this[prop] = dynamicPropertyFunction;
 
