@@ -83,6 +83,13 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       if (this.get(p)) this.notifyPropertyChange(p);
     },this);
     this.endPropertyChanges();
+
+    return sc_super();
+  },
+
+  destroy: function() {
+    this._innerCacheDisable();
+    return sc_super();
   },
 
   replace: function() {
@@ -94,8 +101,15 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * provide support for +objectAt+
    */
   get: function(idx) {
+    var cached,cacheArgs=SC.A(arguments);
+    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     if (idx === parseInt(idx)) {
-      return this.get('referenceArray').objectAt(this._mapPublicToPrivateIndex(idx));
+      return this._innerCacheStore(arguments.callee,
+                                   cacheArgs,
+                                   this.get('referenceArray').objectAt(this._mapPublicToPrivateIndex(idx)));
     }
     return sc_super();
   },
@@ -105,15 +119,32 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   }.property('[]'),
 
   indexOf: function(obj,startAt) {
+    var cached,cacheArgs=SC.A(arguments);
+    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     startAt = this._mapPublicToPrivateIndex(startAt);
     var i = this._indexSet.indexOf(obj,startAt);
-    return i >= 0 ? this._mapPrivateToPublicIndex(i) : i;
+
+    return this._innerCacheStore(arguments.callee,
+                                 cacheArgs,
+                                 (i >= 0 ? this._mapPrivateToPublicIndex(i) : i));
   },
 
   lastIndexOf: function(obj,startAt) {
+    var cached,cacheArgs=SC.A(arguments);
+    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     startAt = this._mapPublicToPrivateIndex(startAt);
     var i = this._indexSet.lastIndexOf(obj,startAt);
-    return i >= 0 ? this._mapPrivateToPublicIndex(i) : i;
+
+    return this._innerCacheStore(arguments.callee,
+                                 cacheArgs,
+                                 (i >= 0 ? this._mapPrivateToPublicIndex(i) : i));
+
   },
 
   forEach: function(callback, target) {
@@ -440,7 +471,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     }
     privateIndex = this._indexSet.contains(privateIndex) ? privateIndex : -1;
 
-    return privateIndex;
+    return this._innerCacheStore(arguments.callee,cacheArgs,privateIndex);
   },
 
   /**
@@ -467,7 +498,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     }
     publicIdx = (0 <= publicIdx && publicIdx < this.get('length')) ? publicIdx : -1;
 
-    return publicIdx;
+    return this._innerCacheStore(arguments.callee,cacheArgs,publicIdx);
   },
 
   _indexShiftQueue: null,
