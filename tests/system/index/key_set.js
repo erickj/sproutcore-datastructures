@@ -211,3 +211,15 @@ test("Index.KeySet can use regexp to compare intersections", function() { // not
   equals(mIntersection.objectAt(0),'moo');
   equals(mIntersection.objectAt(1),'mop');
 });
+
+test("Index.KeySet do generate consistent hashes for the similar keySets", function() {
+  var set1 = Klass.create().set('keys',['foo','moo','mop']);
+  var set2 = Klass.create().set('keys',['mop','moo','foo']);
+
+  ok(SC.hashFor(set1) == SC.hashFor(set2), 'set1 and set2 should have the same hash');
+
+  var oldHash = SC.hashFor(set1);
+  set1.addKeys('bar');
+
+  ok(SC.hashFor(set1) != oldHash, 'the hash for set1 is different');
+});

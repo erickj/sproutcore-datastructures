@@ -1,5 +1,15 @@
 sc_require('system/index');
 
+/**
+ * Important:
+ *
+ * SC.hashFor(aKeySet) will NOT generate a unique hash for the object
+ * instance.
+ *
+ * 2 different KeySets with the same uniq keys will generate identical
+ * hash values.  This allows for DS.Index to cache a KeySet based on
+ * its contents rather than its existence
+ */
 DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
   /* quack */
   isKeySet: true,
@@ -81,5 +91,10 @@ DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
       } else if (otherKeySet.contains(key)) ret.push(key);
     }
     return ret;
+  },
+
+  hash: function(keySet) {
+    var ret = keySet.get('keys').sort().join();
+    return SC.hashFor(ret);
   }
 });
