@@ -13,11 +13,6 @@ DataStructures.FunctionStats = {
   },
 
   dump: function() {
-    if (!DataStructures.TRACK_STATS) {
-      SC.Logger.warn('DataStructures.FunctionStats.dump: DS.TRACK_STATS is not enabled');
-      return this;
-    }
-
     SC.Logger.group('FunctionStats Dump');
     var countTotal = 0;
     for(var p in this._callStats) if (this._callStats.hasOwnProperty(p)) {
