@@ -820,7 +820,11 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     // this modification did NOT timeout
     // use +set+ to alert +_modificationInProgressObserver+
     // to run any queued changes
-    this.set('_modificationInProgress',false);
+    if (_resuming) {
+      this.setIfChanged('_modificationInProgress',false);
+    } else {
+      this._modificationInProgress = false;
+    }
 
     // handle any index shifts
     if (indexShift && indexShift.get('isShift')) {
