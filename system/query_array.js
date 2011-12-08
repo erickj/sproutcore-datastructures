@@ -372,11 +372,50 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
   },
 
   /**
-   * TODO: this is implemented in the most naive approach possible
-   * currently. no care has been taken for speed optimizations.
-   *
-   * THIS WILL MAKE SHIT SLOOOOOOOOOWWWWWWWWW!!!!!!!!!!!!!!!!!!!
+   * caching - borrowed directly from DS.Index
+   * TODO: normalize
    */
+  _caches: null, // if _caches === undefined then caching is disabled
+
+  _innerCacheFetch: function(cache,keys) {
+    if (!this._caches) return null;
+
+    var cacheHash = SC.hashFor(cache);
+    var keyHash = SC.hashFor(SC.A(keys).map(function(i) { return SC.hashFor(i); }).join());
+
+    return this._caches[cacheHash] && this._caches[cacheHash][keyHash] || null;
+  },
+
+  _innerCacheStore: function(cache,keys,val) {
+    if (this._caches === undefined) return val;
+    if (!this._caches) this._caches = {};
+
+    var cacheHash = SC.hashFor(cache);
+    var keyHash = SC.hashFor(SC.A(keys).map(function(i) { return SC.hashFor(i); }).join());
+
+    this._caches[cacheHash] = this._caches[cacheHash] || {};
+    this._caches[cacheHash][keyHash] = val;
+
+    return this._caches[cacheHash][keyHash];
+  },
+
+  /**
+   * Disables and resets the caches
+   */
+  _innerCacheDisable: function() {
+    this._caches = undefined;
+  },
+
+  /**
+   * Reenable caching after it has been disabled
+   */
+  _innerCacheEnable: function() {
+    if (this._caches === undefined) {
+      this._caches = null;
+    }
+  },
+  /** END TODO **/
+
   /**
    * @private
    * counting's hard... AHHHHHHHHHHH!!!!!!!!!!!!!!!!
@@ -384,24 +423,26 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * map an index from the public index space into the private index space
    */
   _mapPublicToPrivateIndex: function(publicIdx) {
+    var cached, cacheArgs = publicIdx;
+    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     var indexSet = this._indexSet,
-      privateIndex = indexSet.firstObject();
+      privateIndex = indexSet.firstObject(),
+      counter = 0;
 
     while(!SC.none(privateIndex)
-          && publicIdx > 0
+          && counter < publicIdx
           && privateIndex >= 0) {
-      publicIdx--;
+      this._innerCacheStore(arguments.callee,counter++,privateIndex);
       privateIndex = indexSet.indexAfter(privateIndex);
     }
-    return this._indexSet.contains(privateIndex) ? privateIndex : -1;
+    privateIndex = this._indexSet.contains(privateIndex) ? privateIndex : -1;
+
+    return privateIndex;
   },
 
-  /**
-   * TODO: this is implemented in the most naive approach possible
-   * currently. no care has been taken for speed optimizations.
-   *
-   * THIS WILL MAKE SHIT SLOOOOOOOOOWWWWWWWWW!!!!!!!!!!!!!!!!!!!
-   */
   /**
    * @private
    * counting's hard... AHHHHHHHHHHH!!!!!!!!!!!!!!!!
@@ -409,6 +450,11 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    * map an index from the private index space into the public index space
    */
   _mapPrivateToPublicIndex: function(privateIdx) {
+    var cached,cacheArgs = privateIdx;
+    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     var indexSet = this._indexSet,
       curPrivateIdx = indexSet.firstObject(),
       publicIdx = -1;
@@ -416,10 +462,12 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     while(!SC.none(curPrivateIdx)
           && privateIdx >= curPrivateIdx
           && curPrivateIdx >= 0) {
-      publicIdx++;
+      this._innerCacheStore(arguments.callee,curPrivateIdx,++publicIdx);
       curPrivateIdx = indexSet.indexAfter(curPrivateIdx);
     }
-    return (0 <= publicIdx && publicIdx < this.get('length')) ? publicIdx : -1;
+    publicIdx = (0 <= publicIdx && publicIdx < this.get('length')) ? publicIdx : -1;
+
+    return publicIdx;
   },
 
   _indexShiftQueue: null,
@@ -689,6 +737,8 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
    */
   // TODO: setTimeout and the flushQueue are currently semi broken... fix this
   _doModifications: function(addSets, removeSets, operations, indexShift /*, _resuming */) {
+    this._innerCacheDisable();
+
     var startTime = (new Date()).getTime(),
       modificationTimeExceeded = false,
       that = this,
@@ -841,6 +891,8 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     delete removeSets;
     delete addSets;
     delete operations;
+
+    this._innerCacheEnable();
   },
 
   /**
