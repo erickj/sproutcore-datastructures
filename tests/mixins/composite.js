@@ -56,11 +56,15 @@ module("DataStructures Composite Mixin", {
     SC.run(function() {
       SC.Logger.log('setup runloop execute');
     });
+
+    DS.TRACK_STATS = YES;
   },
 
   teardown: function() {
     SC.run(function() {
       SC.Logger.log('teardown runloop execute');
+      DS.FunctionStats.dump().clear();
+      DS.TRACK_STATS = NO;
     });
     SC.Logger.log('--> Teardown Test: "%@"'.fmt(this.working.test));
     SC.Logger.groupEnd();
