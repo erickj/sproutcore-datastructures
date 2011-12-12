@@ -90,7 +90,7 @@ SC.mixin(DS.Composite, {
   })
 });
 
-test("test load for aggregating composites", function() {
+test("test load for building composites bottom up", function() {
   var Forest = SC.Object.extend(DataStructures.Composite, {
       compositeProperties: ['trees'],
       trees: null,
@@ -123,9 +123,9 @@ test("test load for aggregating composites", function() {
 
   var aForest = Forest.create();
 
-  var numTrees = 1;
-  var numBranches = 1;
-  var numLeaves = 1000;
+  var numTrees = 20;
+  var numBranches = 5;
+  var numLeaves = 50;
 
   var stomataCount = 0;
   var trees = [];
@@ -135,6 +135,12 @@ test("test load for aggregating composites", function() {
   SC.AUDIT_OBSERVERS = YES;
   SC.ObserverAuditLog.clear();
 
+  DS.TRACK_STATS = YES;
+  DS.FunctionStats.clear();
+
+  //
+  // top down build
+  //
   SC.run(function() {
 //    SC.LOG_OBSERVERS = YES;
     for (var t=0;t<numTrees;t++) {
@@ -176,7 +182,7 @@ test("test load for aggregating composites", function() {
         for (var l=0; l<numLeaves; l++) {
           var lt = new Date();
 
-          var numStomata = Math.floor(Math.random() * 100);
+          var numStomata = 300;
           stomataCount += numStomata;
 //          SC.Logger.group('begin create leaf');
           leaf = Leaf.create({
@@ -225,6 +231,7 @@ test("test load for aggregating composites", function() {
 
   SC.AUDIT_OBSERVERS = NO;
   SC.ObserverAuditLog.dump().clear();
+  DS.FunctionStats.dump().clear();
 
   SC.Logger.log('end run loop: ', runLoopTotalTime);
   SC.Logger.log('wrap up time: ', runLoopWrapUpTime);
@@ -277,12 +284,13 @@ test("test load for aggregating composites", function() {
          numTrees,
          'There are lots of trees');
 
-  // I had a problem w/ complexity this calculation was to determine the algorithm
-  // did NOT slow down with the number of elements and compute it's statistical
-  // significance
+  // I had a problem w/ algorithmic complexity - this calculation
+  // helps determine the algorithm did NOT slow down with the number
+  // of elements and compute it's statistical significance
 
-  // determine standard deviation of the first 10% and last 10% of the leaf times
-  var setSize = leafTimes.length * .1;
+  // determine standard deviation of the first 10% and last 10% of the
+  // leaf times
+  var setSize = Math.ceil(leafTimes.length * .25);
 
   var populationVariance = function(set) {
       var mean = set.reduce(Array.prototype.reduceAverage),
@@ -292,7 +300,7 @@ test("test load for aggregating composites", function() {
 
       return diffMeanSquares.reduce(Array.prototype.reduceAverage);
     },
-    stdVariance = function(set) {
+    sampleVariance = function(set) {
       var mean = set.reduce(Array.prototype.reduceAverage),
       diffMeanSquares = set.map(function(i) {
         return Math.pow(i - mean, 2);
@@ -304,23 +312,33 @@ test("test load for aggregating composites", function() {
     stdDev = function(variance) {
       return Math.sqrt(variance);
     },
-    // from http://home.ubalt.edu/ntsbarsh/Business-stat/otherapplets/pvalues.htm
-    pValueStudT = function pValueStudT(t,n) {
-      t=Math.abs(t); var w=t/Math.sqrt(n); var th=Math.atan(w);
-      if(n==1) { return 1-th/PiD2; }
-        var sth=Math.sin(th); var cth=Math.cos(th);
-        if((n%2)==1)
-          { return 1-(th+sth*cth*pValueStatCom(cth*cth,2,n-3,-1))/PiD2; }
-        else
-          { return 1-sth*pValueStatCom(cth*cth,1,n-3,-1); }
-      },
-    pValueStatCom = function pValueStatCom(q,i,j,b) {
-      var zz=1; var z=zz; var k=i; while(k<=j) { zz=zz*q*k/(k-b); z=z+zz; k=k+2; }
-	    return z / 2; // one-tail
+    lookupPValue = function(t,df,twoTail) {
+      twoTail = arguments.length >= 4 ? twoTail : true;
+      df = Math.abs(Math.ceil(df));
+      var tTable = {
+        /** see http://www.math.unb.ca/~knight/utility/t-table.htm */
+        p: [[0.10,0.20],[0.05,0.10],[0.025,0.05],[0.01,0.02],[0.005,0.01],[0.001,0.002],[0.0005,0.001]],
+        table: [{df:1,values: [3.078,6.314,12.71,31.82,63.66,318.3,637]},{df:2,values: [1.886,2.920,4.303,6.965,9.925,22.330,31.6]},{df:3,values: [1.638,2.353,3.182,4.541,5.841,10.210,12.92]},{df:4,values: [1.533,2.132,2.776,3.747,4.604,7.173,8.610]},{df:5,values: [1.476,2.015,2.571,3.365,4.032,5.893,6.869]},{df:6,values: [1.440,1.943,2.447,3.143,3.707,5.208,5.959]},{df:7,values: [1.415,1.895,2.365,2.998,3.499,4.785,5.408]},{df:8,values: [1.397,1.860,2.306,2.896,3.355,4.501,5.041]},{df:9,values: [1.383,1.833,2.262,2.821,3.250,4.297,4.781]},{df:10,values: [1.372,1.812,2.228,2.764,3.169,4.144,4.587]},{df:11,values: [1.363,1.796,2.201,2.718,3.106,4.025,4.437]},{df:12,values: [1.356,1.782,2.179,2.681,3.055,3.930,4.318]},{df:13,values: [1.350,1.771,2.160,2.650,3.012,3.852,4.221]},{df:14,values: [1.345,1.761,2.145,2.624,2.977,3.787,4.140]},{df:15,values: [1.341,1.753,2.131,2.602,2.947,3.733,4.073]},{df:16,values: [1.337,1.746,2.120,2.583,2.921,3.686,4.015]},{df:17,values: [1.333,1.740,2.110,2.567,2.898,3.646,3.965]},{df:18,values: [1.330,1.734,2.101,2.552,2.878,3.610,3.922]},{df:19,values: [1.328,1.729,2.093,2.539,2.861,3.579,3.883]},{df:20,values: [1.325,1.725,2.086,2.528,2.845,3.552,3.850]},{df:21,values: [1.323,1.721,2.080,2.518,2.831,3.527,3.819]},{df:22,values: [1.321,1.717,2.074,2.508,2.819,3.505,3.792]},{df:23,values: [1.319,1.714,2.069,2.500,2.807,3.485,3.768]},{df:24,values: [1.318,1.711,2.064,2.492,2.797,3.467,3.745]},{df:25,values: [1.316,1.708,2.060,2.485,2.787,3.450,3.725]},{df:26,values: [1.315,1.706,2.056,2.479,2.779,3.435,3.707]},{df:27,values: [1.314,1.703,2.052,2.473,2.771,3.421,3.690]},{df:28,values: [1.313,1.701,2.048,2.467,2.763,3.408,3.674]},{df:29,values: [1.311,1.699,2.045,2.462,2.756,3.396,3.659]},{df:30,values: [1.310,1.697,2.042,2.457,2.750,3.385,3.646]},{df:32,values: [1.309,1.694,2.037,2.449,2.738,3.365,3.622]},{df:34,values: [1.307,1.691,2.032,2.441,2.728,3.348,3.601]},{df:36,values: [1.306,1.688,2.028,2.434,2.719,3.333,3.582]},{df:38,values: [1.304,1.686,2.024,2.429,2.712,3.319,3.566]},{df:40,values: [1.303,1.684,2.021,2.423,2.704,3.307,3.551]},{df:42,values: [1.302,1.682,2.018,2.418,2.698,3.296,3.538]},{df:44,values: [1.301,1.680,2.015,2.414,2.692,3.286,3.526]},{df:46,values: [1.300,1.679,2.013,2.410,2.687,3.277,3.515]},{df:48,values: [1.299,1.677,2.011,2.407,2.682,3.269,3.505]},{df:50,values: [1.299,1.676,2.009,2.403,2.678,3.261,3.496]},{df:55,values: [1.297,1.673,2.004,2.396,2.668,3.245,3.476]},{df:60,values: [1.296,1.671,2.000,2.390,2.660,3.232,3.460]},{df:65,values: [1.295,1.669,1.997,2.385,2.654,3.220,3.447]},{df:70,values: [1.294,1.667,1.994,2.381,2.648,3.211,3.435]},{df:80,values: [1.292,1.664,1.990,2.374,2.639,3.195,3.416]},{df:100,values: [1.290,1.660,1.984,2.364,2.626,3.174,3.390]},{df:150,values: [1.287,1.655,1.976,2.351,2.609,3.145,3.357]},{df:200,values: [1.286,1.653,1.972,2.345,2.601,3.131,3.340]}]
+      };
+
+      var lookupTable = tTable.table;
+      var i=0;
+      for (var l=lookupTable.length;i<l;i++) {
+        if (df <= lookupTable[i].df) break;
+      }
+
+      var tValues = (lookupTable[i] || lookupTable.slice(-1)[0]).values;
+      var pIdx;
+      for (pIdx=0;pIdx<tValues.length;pIdx++) {
+        if (t <= tValues[pIdx]) break;
+      }
+
+      return twoTail ? tTable.p[pIdx][0] : tTable.p[pIdx][1];
     };
 
-  var firstSet = leafTimes.slice(setSize*.1,setSize*1.1).sort().slice(0,-(0.05*setSize)),
-    lastSet = leafTimes.slice(setSize * -1).sort().slice(0,-(0.05*setSize));
+  var sortFn = function(a,b) { return a < b ? -1 : 1; };
+  var firstSet = leafTimes.slice(0,setSize),
+    lastSet = leafTimes.slice(setSize * -1);
 
   var firstSetMean = firstSet.reduce(firstSet.reduceAverage),
     firstSetVariance = populationVariance(firstSet),
@@ -328,45 +346,43 @@ test("test load for aggregating composites", function() {
 
     lastSetMean = lastSet.reduce(lastSet.reduceAverage),
     lastSetVariance = populationVariance(lastSet),
-    lastSetStdDev = stdDev(lastSetVariance);
+    lastSetStdDev = stdDev(lastSetVariance),
 
-    SC.Logger.log("First set size/avg/variance/std dev", firstSet.length, firstSetMean, firstSetVariance, firstSetStdDev);
-    SC.Logger.log("Last set size/avg/variance/std dev", lastSet.length, lastSetMean, lastSetVariance, lastSetStdDev);
+    popMean = leafTimes.reduce(leafTimes.reduceAverage),
+    popVariance = populationVariance(leafTimes),
+    popStdDev = stdDev(popVariance);
 
-  SC.Logger.log('first set std var/std dev', stdVariance(firstSet), stdDev(stdVariance(firstSet)));
-  SC.Logger.log('last set std var/std dev', stdVariance(lastSet), stdDev(stdVariance(lastSet)));
+  SC.Logger.log("first set size/avg/var/std dev,samp var, samp std dev", firstSet.length, firstSetMean, firstSetVariance, firstSetStdDev,sampleVariance(firstSet),stdDev(sampleVariance(firstSet)));
+  SC.Logger.log("last set size/avg/var/std dev,samp var, samp std dev", lastSet.length, lastSetMean, lastSetVariance, lastSetStdDev,sampleVariance(lastSet),stdDev(sampleVariance(lastSet)));
 
   // calculate t value using Welch's t-test
-  var Xi = Math.max(firstSetMean, lastSetMean) - Math.min(firstSetMean, lastSetMean),
-    sTwo1 = stdVariance(firstSet),
-    sTwo2 = stdVariance(lastSet),
+  // http://en.wikipedia.org/wiki/Welch's_t_test
+  var Xi = firstSetMean - lastSetMean,
+    sTwo1 = sampleVariance(firstSet),
+    sTwo2 = sampleVariance(lastSet),
     stdError = Math.sqrt(sTwo1/firstSet.length + sTwo2/lastSet.length),
     t = Xi/stdError;
 
+  // calculate degrees of freedom
   var dfNumerator = Math.pow(sTwo1/firstSet.length + sTwo2/lastSet.length,2),
     df1Denominator = Math.pow(sTwo1/firstSet.length,2)/(firstSet.length - 1),
     df2Denominator =  Math.pow(sTwo2/lastSet.length,2)/(lastSet.length - 1),
-    df = dfNumerator/(df1Denominator + df2Denominator),
-    pValue = pValueStudT(t,df);
+    df = Math.round(dfNumerator/(df1Denominator + df2Denominator)),
+    pValue = lookupPValue(t,df);
 
-    SC.Logger.log('sTwo1/sTwo2', sTwo1, sTwo2);
-    SC.Logger.log('std1/std2',firstSetStdDev,lastSetStdDev);
-    SC.Logger.log('Xi', Xi);
-    SC.Logger.log('stdError',stdError);
-    SC.Logger.log('t/df/p-value', t,df,pValue);
+  SC.Logger.log('sTwo1/sTwo2', sTwo1, sTwo2);
+  SC.Logger.log('std1/std2',firstSetStdDev,lastSetStdDev);
+  SC.Logger.log('Xi', Xi);
+  SC.Logger.log('stdError',stdError);
+  SC.Logger.log('t/df/p-value', t,df,pValue);
 
-  var significant = pValue < 0.05;
-
-  var nullHyp = 'there are no difference in the means';
+  var significant = pValue <= 0.1;
 
   if (significant) {
-    SC.Logger.log('first set',firstSet);
-    SC.Logger.log('last set',lastSet);
-    // arbitrary failure decision:
-    // the second set must be no slower than 150% the first set
-    ok(lastSetMean <= firstSetMean * 1.5, 'the second set should not be more than 150% slower than the first set');
+    // arbitrary comparison, set 2 should be no more than 20% slower than set 1
+    ok(lastSetMean <= firstSetMean * 1.2, 'the second set should not be more than 20% slower than the first set');
   } else {
-    ok(true, nullHyp);
+    ok(true, "the result is not statistically signficant");
   }
 
   var finalWrapUpTime = (new Date()) - runLoopEndTime;
