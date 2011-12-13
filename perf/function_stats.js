@@ -2,6 +2,7 @@ DataStructures.TRACK_STATS = NO;
 
 DataStructures.FunctionStats = {
   _callStats: {},
+  _fnProfiles: {},
 
   startFunction: function(name) {
     if (!DataStructures.TRACK_STATS) return this;
@@ -24,6 +25,10 @@ DataStructures.FunctionStats = {
     }
     SC.Logger.log("Total Count:",countTotal);
     SC.Logger.groupEnd();
+
+
+    SC.Logger.log(DataStructures.FunctionStats._fnProfiles);
+
     return this;
   },
 
@@ -33,3 +38,13 @@ DataStructures.FunctionStats = {
   }
 };
 
+Function.prototype.profile = function(name) {
+  var that = this;
+  return function() {
+    var start = new Date();
+    var ret = that.apply(this,arguments);
+    DataStructures.FunctionStats._fnProfiles[name] = DataStructures.FunctionStats._fnProfiles[name] || 0;
+    DataStructures.FunctionStats._fnProfiles[name] += new Date() - start;
+    return ret;
+  };
+};

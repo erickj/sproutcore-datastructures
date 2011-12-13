@@ -18,7 +18,7 @@ DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
   keys: function(k,v) {
     this._keys = this._keys || [];
     if (arguments.length == 2) {
-      this._keys = SC.A(v).compact().flatten().uniq();
+      this._keys = SC.A(v).fastFlatten().compact().uniq();
     }
     return this._keys;
   }.property().cacheable(),
@@ -33,15 +33,13 @@ DataStructures.Index.KeySet = SC.Object.extend(SC.Array, {
   },
 
   addKeys: function(k /*, k2, k3, ... kN */) {
-    var current = this.get('keys'),
-      newKeys = current.concat(SC.A(arguments).flatten());
-    this.set('keys',newKeys);
+    this.set('keys',this.get('keys').concat(SC.A(arguments)));
     return this;
   },
 
   removeKeys: function(k /* k2, k3, ...kN */) {
     var keys = this.get('keys'),
-      removeKeys = SC.A(arguments).flatten(),
+      removeKeys = SC.A(arguments).fastFlatten(),
       len = removeKeys.length,
       count = 0,
       idx;

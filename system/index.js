@@ -3,6 +3,8 @@
 // Copyright: ©2011 Junction Networks
 // Author:    Erick Johnson
 // ==========================================================================
+sc_require('mixins/simple_cache');
+
 /**
  * Overview:
  *
@@ -31,7 +33,7 @@
  * queried KeySet have changed, then bthe Index.ResultSet object will
  * automatically be updated via KVO.
  */
-DataStructures.Index = SC.Object.extend(SC.Array, {
+DataStructures.Index = SC.Object.extend(SC.Array, DS.SimpleCache, {
   DEBUG_INDEX: NO,
 
   isIndex: YES,
@@ -43,7 +45,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
   destroy: function() {
     this._reset();
-    this._innerCacheDisable();
+    this._simpleCacheDisable();
     return sc_super();
   },
 
@@ -62,8 +64,8 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
     this.set('length',0);
 
-    this._innerCacheDisable();
-    this._innerCacheEnable();
+    this._simpleCacheDisable();
+    this._simpleCacheEnable();
   },
 
   /**
@@ -153,7 +155,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       indexSetForKey;
 
     var cached,cacheArgs = [keySet,doTransform];
-    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+    if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
       return cached;
     }
 
@@ -177,9 +179,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       ret.add(indexSetForKey); // union the SC.IndexSets
     }
 
-    this._innerCacheStore(arguments.callee,cacheArgs,ret);
-
-    return ret; //this._translateIndexSet(ret);
+    return this._simpleCacheStore(arguments.callee,cacheArgs,ret);
   },
 
   /**
@@ -264,7 +264,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       cacheKey,curKey;
 
     var cached,cacheArgs = [keySet,doTransform];
-    if ((cached = this._innerCacheFetch(arguments.callee,cacheArgs))) {
+    if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
       return cached;
     }
 
@@ -287,7 +287,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
 
     keySet.set('keys',retKeys);
 
-    this._innerCacheStore(arguments.callee,cacheArgs,keySet);
+    this._simpleCacheStore(arguments.callee,cacheArgs,keySet);
 
     return keySet;
   },
@@ -318,53 +318,10 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
   },
 
   /**
-   * caching
-   */
-  _caches: null, // if _caches === undefined then caching is disabled
-
-  _innerCacheFetch: function(cache,keys) {
-    if (!this._caches) return null;
-
-    var cacheHash = SC.hashFor(cache);
-    var keyHash = SC.hashFor(SC.A(keys).map(function(i) { return SC.hashFor(i); }).join());
-
-    return this._caches[cacheHash] && this._caches[cacheHash][keyHash] || null;
-  },
-
-  _innerCacheStore: function(cache,keys,val) {
-    if (this._caches === undefined) return val;
-    if (!this._caches) this._caches = {};
-
-    var cacheHash = SC.hashFor(cache);
-    var keyHash = SC.hashFor(SC.A(keys).map(function(i) { return SC.hashFor(i); }).join());
-
-    this._caches[cacheHash] = this._caches[cacheHash] || {};
-    this._caches[cacheHash][keyHash] = val;
-
-    return this._caches[cacheHash][keyHash];
-  },
-
-  /**
-   * Disables and resets the caches
-   */
-  _innerCacheDisable: function() {
-    this._caches = undefined;
-  },
-
-  /**
-   * Reenable caching after it has been disabled
-   */
-  _innerCacheEnable: function() {
-    if (this._caches === undefined) {
-      this._caches = null;
-    }
-  },
-
-  /**
    * @private
    */
   _insertValuesAtKeys: function(keys,val) {
-    this._innerCacheDisable();
+    this._simpleCacheDisable();
 
     var vals = SC.A(arguments).slice(1),
       vLen = vals.get ? vals.get('length') : vals.length,
@@ -413,14 +370,14 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       this._reverseKeyMap[hashForVal] = reverseMap.uniq();
     };
 
-    this._innerCacheEnable();
+    this._simpleCacheEnable();
   },
 
   /**
    * @private
    */
   _removeValuesAtKeys: function(keys,val) {
-    this._innerCacheDisable();
+    this._simpleCacheDisable();
 
     var vals = SC.A(arguments).slice(1),
       vLen = vals.get ? vals.get('length') : vals.length,
@@ -467,7 +424,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, {
       }
     }
 
-    this._innerCacheEnable();
+    this._simpleCacheEnable();
   },
 
   /* @private */

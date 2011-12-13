@@ -1,3 +1,4 @@
+sc_require('mixins/simple_cache');
 sc_require('system/index');
 sc_require('system/query_array');
 
@@ -11,7 +12,7 @@ sc_require('system/query_array');
  * that affects one of its key set values then the ResultSet updates
  * its IndexSet by requerying the index for an updated version.
  */
-DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
+DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, SC.Enumerable,
   /* DataStructures.Index.ResultSet.prototype */ {
 
   isSCArray: NO, // subvert needing to support range observers
@@ -24,6 +25,11 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
   index: null,
 
   indexSet: function() {
+    var cached,cacheArgs = SC.A(arguments);
+    if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     var index = this.get('index');
     if (!index) return null;
 
@@ -31,8 +37,8 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
     var set = index.indexSetForKeys(this.get('keySet'), doKeyTransform);
     set.source = index;
 
-    return set;
-  }.property('keySet', 'index', 'doKeyTransform'),//.cacheable(),
+    return this._simpleCacheStore(arguments.callee,cacheArgs,set);
+  }.property('index', 'doKeyTransform'),//.cacheable(),
 
   // you probably just want to leave this alone
   doKeyTransform: NO,
@@ -40,15 +46,21 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
   init: function() {
     if (this.get('index') || this.get('keySet')) {
       this.notifyPropertyChange('*');
+      this._simpleCacheClear();
     }
   },
 
   _keySetDidChange: function() {
-    this.notifyPropertyChange('keySet');
-  }.observes('keySet.*'),
+    this._simpleCacheClear();
+
+    // TODO: this keySet -> indexSet property observing is a hack for cache clears
+    this.notifyPropertyChange('indexSet');
+  }.observes('keySet','keySet.*'),
 
   _cachedIndex: null,
   _indexObjectDidChange: function() {
+    this._simpleCacheClear();
+
     // setup indexDidChange observers
     var i = this.get('index');
 
@@ -93,6 +105,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
 
     if (intersection && intersection.length) {
       if (this.DEBUG_RESULT_SET) SC.Logger.log('DS.ResultSet._indexDidChange: have key intersection', intersection);
+      this._simpleCacheClear();
       this.notifyPropertyChange('indexSet');
     }
   },
@@ -177,11 +190,19 @@ DataStructures.Index.ResultSet = SC.Object.extend(SC.CoreArray, SC.Enumerable,
 
     if (!indexSet || !index || index.get('isDestroyed')) return undefined;
 
+    var cached,cacheArgs = SC.A(arguments);
+    if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
+      return cached;
+    }
+
     var innerIdx = indexSet.firstObject();
     while(idx--) {
       innerIdx = this.get('indexSet').indexAfter(innerIdx);
     }
-    return this.get('index').objectAt(innerIdx);
+
+    return this._simpleCacheStore(arguments.callee,
+                                  cacheArgs,
+                                  this.get('index').objectAt(innerIdx));
   },
 
   replace: function() {

@@ -26,6 +26,40 @@ module("DataStructures.Index", {
   }
 });
 
+var indexRandomWords = function(index, numWords) {
+  var alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  var randomLetter = function(a) {
+    return a[(Math.ceil(Math.random() * 1000)) % a.length];
+  };
+  var makeWord = function() {
+    var w="",l = Math.ceil(Math.random() * 20);
+    for (var i=0;i<l;i++) {
+      w += randomLetter(alpha);
+    };
+    return w;
+  };
+
+  var tmp, tmpObj;
+  var hashCompare = {};
+  var deltas = [],d1,deltas2 = [],d2;
+  for (var i=0;i<numWords;i++) {
+    tmp = makeWord();
+    tmpObj = {
+      val: tmp
+    };
+    d1 = new Date();
+    index.insert(tmp,tmpObj);
+    deltas.push(new Date() - d1);
+
+    d2 = new Date();
+    hashCompare[tmp] = tmpObj;
+    deltas2.push(new Date() - d2);
+  };
+
+  SC.Logger.log('indexRandomWords.insert took:',deltas);
+  SC.Logger.log('indexRandomWords hash insert took:',deltas2);
+}
+
 test("Index is an object", function() {
   ok(SC.typeOf(Klass, SC.T_CLASS), "DataStructures.Index is an SC class");
   ok(SC.kindOf(i, Klass), "i is a kind of Index");
@@ -501,4 +535,15 @@ test("Index lookups can match on regexes", function() {
   var expected = fooObjs.length + booObjs.length;
 
   equals(result.get('length'), expected, 'looking up with this regex should return %@ values'.fmt(expected));
+});
+
+test("Index lookup times", function() {
+  var num = 1000;
+//  debugger;
+
+  indexRandomWords(i,num);
+  equals(i.get('indexLength'), num, 'index should contain %@ values'.fmt(num));
+
+  var r = /bar/;
+  var res = i.lookup(r,false);
 });

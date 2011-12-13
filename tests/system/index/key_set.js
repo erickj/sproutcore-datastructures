@@ -126,6 +126,17 @@ test("Index.KeySet can add keys with +addKeys+", function() {
   ok(newSet.isEqual(set.get('keys')), 'addKeys with array should have added keys');
 });
 
+test("Index.KeySet can add other key sets with +addKey+",function() {
+  var set2 = DS.Index.KeySet.create().addKeys(1,2,3);
+
+  equals(set.get('length'),1,'prereq - set should have 1 key');
+  equals(set2.get('length'),3,'prereq - set2 should have 3 keys');
+
+  set.addKeys(set2);
+
+  equals(set.get('length'),4,'set should have 4 keys');
+});
+
 test("Index.KeySet can remove keys with +removeKeys+", function() {
   var otherKeys = [1,2,3,4].map(function(i) { return "key-%@".fmt(i); });
   set.addKeys(otherKeys);
