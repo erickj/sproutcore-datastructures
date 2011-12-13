@@ -186,6 +186,7 @@ test("compositeProperties should be observable and propogate changes up the comp
 
   SC.RunLoop.begin();
   SC.Logger.log('begin setting leaves values on tree1 and tree2');
+//debugger;
   tree1.set('leaves', 150);
   tree2.set('leaves', 50);
   SC.Logger.log('end setting leaves values on tree1 and tree2');

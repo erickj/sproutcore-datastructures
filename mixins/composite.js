@@ -113,7 +113,6 @@ DataStructures.Composite = {
   _cmpst_ParentIndex: null,
 
   initMixin: function() {
-    DataStructures.FunctionStats.startFunction('initMixin');
     this.compositeChildren = [];
     this._cmpst_ChildIndex = {}; // speed up lookups
 
@@ -127,7 +126,7 @@ DataStructures.Composite = {
 
     this._cmpst_initCompositeProperties();
     this._cmpst_initCompositeParents();
-  },
+  }.dsProfile('initMixin'),
 
   /**
    * destroying a composite piece will effectively leave all of
@@ -136,7 +135,6 @@ DataStructures.Composite = {
    * the current object from the composite both up and down the DAG
    */
   destroyMixin: function() {
-    DataStructures.FunctionStats.startFunction('destroyMixin');
     // N.B. 6/30/11:
     // Without using +copy+ on these arrays, _parents_ gets assigned
     // as a reference to _this.get('compositeParents')_ .  When
@@ -173,7 +171,7 @@ DataStructures.Composite = {
     for (var p in this) if (this[p] && this[p].isDynamicCompositeProperty) {
       this._cmpst_resetDynamicProperty(p);
     }
-  },
+  }.dsProfile('destroyMixin'),
 
   /**
    * from a composite element or leaf perspective there may
@@ -181,34 +179,31 @@ DataStructures.Composite = {
    * @return Array
    */
   compositeRoot: function() {
-    DataStructures.FunctionStats.startFunction('compositeRoot');
     if (this.get('compositeParents').get('length') == 0) {
       return [this];
     } else {
       var ret = this
                   .get('compositeParents')
                   .getEach('compositeRoot')
-                  .flatten()
+                  .fastFlatten()
                   .uniq();
       return ret;
     }
-  }.property(/* see _cmpst_notifyChildrenIfRootChanged */),//.cacheable(),
+  }.dsProfile('compositeRoot').property(/* see _cmpst_notifyChildrenIfRootChanged */),//.cacheable(),
 
   // TODO: this isn't cacheable currently due to hack above
   compositeIsRoot: function() {
-    DataStructures.FunctionStats.startFunction('compositeIsRoot');
     var cr = this.get('compositeRoot');
     return cr.length == 1 && cr[0] === this;
-  }.property('compositeRoot'),//.cacheable(),
+  }.dsProfile('compositeIsRoot').property('compositeRoot'),//.cacheable(),
 
   compositeSupplant: function(composite) {
-    DataStructures.FunctionStats.startFunction('compositeSupplant');
     var children = composite.get('compositeChildren');
     children.compact().forEach(function(c) {
       this.addCompositeChild(c);
       composite.removeCompositeChild(c);
     },this);
-  },
+  }.dsProfile('compositeSupplant'),
 
   /**
    * For 99.9% of composite operations we'll probably be doing a +get+
@@ -220,7 +215,6 @@ DataStructures.Composite = {
    */
   _cmpst_isCollecting: false,
   doCompositeOperation: function(op,args) {
-    DataStructures.FunctionStats.startFunction('doCompositeOperation');
     if (!this.get('isCompositePiece')) return null;
 
     var composites = this.get('compositeList'),
@@ -240,10 +234,9 @@ DataStructures.Composite = {
     });
 
     return ret;
-  },
+  }.dsProfile('doCompositeOperation'),
 
   compositeInspect: function() {
-    DataStructures.FunctionStats.startFunction('compositeInspect');
     SC.Logger.group("Composite %@".fmt(this.toString()));
     if (this.get('compositeIsRoot')) {
       SC.Logger.log("-> ROOT");
@@ -271,21 +264,19 @@ DataStructures.Composite = {
     }
 
     SC.Logger.groupEnd();
-  },
+  }.dsProfile('compositeInspect'),
 
   _compositeInspectHook: function() {}, // override in implementations
 
   compositeIsLeaf: function() {
-    DataStructures.FunctionStats.startFunction('compositeIsLeaf');
-    return this.get('isCompositePiece') && !this.get('compositeHasChildren');
-  }.property('compositeHasChildren', 'isCompositePiece').cacheable(),
+    return !this.get('compositeHasChildren');
+  }.dsProfile('compositeIsLeaf').property('compositeHasChildren'),//.cacheable(),
 
   compositeHasChildren: function() {
-    DataStructures.FunctionStats.startFunction('compositeHasChildren');
     return this.get('isCompositePiece')
       && this.get('compositeChildren')
       && this.get('compositeChildren').compact().length > 0;
-  }.property('compositeList', 'isCompositePiece').cacheable(),
+  }.dsProfile('compositeHasChildren').property('compositeList', 'isCompositePiece').cacheable(),
 
   /**
    * build a flattened list of all our composites objects on each
@@ -293,7 +284,6 @@ DataStructures.Composite = {
    * is invalidated and rebuilt
    */
   compositeList: function() {
-    DataStructures.FunctionStats.startFunction('compositeList');
     if (!this.get('isCompositePiece')) return null;
 
     /**
@@ -306,17 +296,18 @@ DataStructures.Composite = {
       ret = ret.concat(c.get('compositeList'));
     });
 
-    return ret.flatten();
-// TODO: fix detailProvider notifying the contact to fix this
-// To reproduce - fetch DirectoryEntityItems after logging in - look
-// at the sip field of an existing contact.  it isn't populated.  to
-// populate run <contact>.notifyPropertyChange('compositeChildren')
-/*  }.property('isCompositePiece').cacheable(), */
-  }.property('isCompositePiece','compositeChildren').cacheable(), // EJ 11/2/11 - THIS MUST BE CACHEABLE - otherwise compositeProperty updates can take upwards of 1/2 a second w/ external observers requesting the compositeList
+    // don't flatten the result - it's tooooo slooooowwww - make sure
+    // we build a flattened list
+    return ret;
+
+  // EJ 11/2/11 - THIS MUST BE CACHEABLE - otherwise compositeProperty
+  // updates can take upwards of 1/2 a second w/ external observers
+  // requesting the compositeList.  Caching this saves time on sorting
+  // which is.dsProfile('compositeList') expensive
+  }.dsProfile('compositeList').property('isCompositePiece','compositeChildren').cacheable(),
 
   compositeCompare: null,
   compositeSortChildren: function() {
-    DataStructures.FunctionStats.startFunction('compositeSortChildren');
     // make sure to take a copy here so we don't sort in place.
     // removing child composites relies on consistent indices in the
     // array since they are cached for fast lookup
@@ -327,23 +318,17 @@ DataStructures.Composite = {
       };
 
     return boundCompareFn ? children.sort(boundCompareFn) : children;
-  },
+  }.dsProfile('compositeSortChildren'),
 
   compositeHasChild: function(c) {
-    DataStructures.FunctionStats.startFunction('compositeHasChild');
-    if (!this.get('isCompositePiece')) return null;
-
     var h = SC.hashFor(c);
     return !SC.empty(this._cmpst_ChildIndex[h]);
-  },
+  }.dsProfile('compositeHasChild'),
 
   compositeHasParent: function(p) {
-    DataStructures.FunctionStats.startFunction('compositeHasParent');
-    if (!this.get('isCompositePiece')) return null;
-
     var h = SC.hashFor(p);
     return !SC.empty(this._cmpst_ParentIndex[h]);
-  },
+  }.dsProfile('compositeHasParent'),
 
   /**
    * TODO: the last big todo is to avoid creating loops with
@@ -353,8 +338,8 @@ DataStructures.Composite = {
    * make teh compositeParentIndex a composite property that is auto updated
    * for each node up the composite as nodes are added... but who knows
    */
+  _cmpst_addCompositeChildNotifyScheduled: null,
   addCompositeChild: function(c) {
-    DataStructures.FunctionStats.startFunction('addCompositeChild');
     if (this.compositeHasChild(c)) return c;
 
     // TODO: see the note above about avoiding loops
@@ -371,7 +356,10 @@ DataStructures.Composite = {
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('Composite.addCompositeChild: %@ (%@) added composite child: %@ (%@)'.fmt(this.toString(),SC.hashFor(this),c.toString(),SC.hashFor(c)));
 
-    this.compositeChildren.pushObject(c);
+    // work around a bug with SC.Array double notifying for the
+    // enumerable property
+    this.compositeChildren.push(c);
+    this.compositeChildren.notifyPropertyChange('[]');
 
     var cLen = this.compositeChildren.length;
     this._cmpst_ChildIndex[SC.hashFor(c)] = cLen - 1;
@@ -383,10 +371,9 @@ DataStructures.Composite = {
     this._cmpst_notifyOfChildProvidedCompositePropertiesChange(c);
 
     return c;
-  },
+  }.dsProfile('addCompositeChild'),
 
   removeCompositeChild: function(c) {
-    DataStructures.FunctionStats.startFunction('removeCompositeChild');
     if (!c.isCompositePiece) {
       throw new Error("only composite pieces may be removed - try mixing DataStructures.Composite into your child object first");
     }
@@ -418,10 +405,9 @@ DataStructures.Composite = {
     this._cmpst_notifyOfChildProvidedCompositePropertiesChange(c);
 
     return c;
-  },
+  }.dsProfile('removeCompositeChild'),
 
   addCompositeParent: function(p) {
-    DataStructures.FunctionStats.startFunction('addCompositeParent');
     if (this.compositeHasParent(p)) return p;
 
     // TODO: see the note above about avoiding loops
@@ -437,11 +423,10 @@ DataStructures.Composite = {
 
     p.addCompositeChild(this);
     return p;
-  },
+  }.dsProfile('addCompositeParent'),
 
   /* private */
   _cmpst_initCompositeParents: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_initCompositeParents');
     if (!this.compositeParents) {
       this.compositeParents = [];
     }
@@ -454,20 +439,18 @@ DataStructures.Composite = {
 
     //this.notifyPropertyChange('compositeParents');
     this._cmpst_unbound_compositeParentsDidChange();
-  },
+  }.dsProfile('_cmpst_initCompositeParents'),
 
   /* desroy */
   _cmpst_destroyCompositeParents: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_destroyCompositeParents');
     this.removeObserver('compositeParents.[]',
                         '_cmpst_unbound_compositeParentsDidChange');
     this.removeObserver('compositeParents',
                         '_cmpst_unbound_compositeParentsDidChange');
-  },
+  }.dsProfile('_cmpst_destroyCompositeParents'),
 
   /* private */
   _cmpst_initCompositeProperties: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_initCompositeProperties');
     if (!this.compositeProperties) {
       this.compositeProperties = [];
     }
@@ -487,20 +470,18 @@ DataStructures.Composite = {
 
     // optimized to avoid using notifyPropertyChange for compositeProperties
     this._cmpst_updateCompositePropertyMonitors();
-  },
+  }.dsProfile('_cmpst_initCompositeProperties'),
 
   /* private */
   _cmpst_destroyCompositeProperties: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_destroyCompositeProperties');
     this.removeObserver('compositeProperties.[]',
                         '_cmpst_unbound_compositePropertiesDidChange');
     this.removeObserver('compositeProperties',
                         '_cmpst_unbound_compositePropertiesDidChange');
-  },
+  }.dsProfile('_cmpst_destroyCompositeProperties'),
 
   /* private */
   _addCompositeParent: function(p) {
-    DataStructures.FunctionStats.startFunction('_addCompositeParent');
     if (this.compositeHasParent(p)) return p;
 
     var pLen;
@@ -529,11 +510,10 @@ DataStructures.Composite = {
     }
 
     return p;
-  },
+  }.dsProfile('_addCompositeParent'),
 
   /* private */
   _removeCompositeParent: function(p) {
-    DataStructures.FunctionStats.startFunction('_removeCompositeParent');
     if (!this.compositeHasParent(p)) return null;
 
     var h = SC.hashFor(p),
@@ -549,7 +529,7 @@ DataStructures.Composite = {
     this.get('compositeParents').removeObject(p);
 
     return true;
-  },
+  }.dsProfile('_removeCompositeParent'),
 
   /**
    * @private
@@ -562,7 +542,6 @@ DataStructures.Composite = {
    * it, let everyone know that root has changed
    */
   _cmpst_notifyChildrenIfRootChanged: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_notifyChildrenIfRootChanged');
     var root = this.get('compositeRoot'),
       rootParents = this.get('compositeParents').filter(function(p) {
         return p.get('compositeParents').length == 0;
@@ -576,29 +555,26 @@ DataStructures.Composite = {
         piece.notifyPropertyChange('compositeRoot');
       });
     }
-  },
+  }.dsProfile('_cmpst_notifyChildrenIfRootChanged'),
 
   _cmpst_unbound_compositeChildrenDidChangeScheduled: null,
   _cmpst_unbound_compositeChildrenDidChange: function(target,key,val,rev) {
-    DataStructures.FunctionStats.startFunction('_cmpst_unbound_compositeChildrenDidChange');
     if (this._cmpst_unbound_compositeChildrenDidChangeScheduled) return;
 
-    if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('Composite._cmpst_unbound_compositeChildrenDidChange: %@ (%@) at %@ - key = %@ compositeChildrenDidChange'.fmt(this.toString(), SC.hashFor(this), rev, key),  SC.A(arguments).join(':'));
-
     var task = SC.Task.create({ run: function() {
-      DataStructures.FunctionStats.startFunction('_cmpst_unbound_compositeChildrenDidChange.task');
+      if (this.DEBUG_COMPOSITE)
+        SC.Logger.log('Composite._cmpst_unbound_compositeChildrenDidChange.task: %@ (%@) at %@ - key = %@ compositeChildrenDidChange'.fmt(this.toString(), SC.hashFor(this), rev, key),  SC.A(arguments).join(':'));
+
       this.notifyPropertyChange('compositeList');
       this.get('compositeParents').forEach(function(p) {
         p.notifyPropertyChange('compositeChildren');
       });
-      this._cmpst_unbound_compositeChildrenDidChangeScheduled = false;
-    }.bind(this)});
+      this._cmpst_unbound_compositeChildrenDidChangeScheduled = null;
+    }.bind(this).dsProfile('_cmpst_unbound_compositeChildrenDidChange.task')});
 
     this._cmpst_unbound_compositeChildrenDidChangeScheduled = true;
-
     this.get('taskQueue').push(task);
-  },
+  }.dsProfile('_cmpst_unbound_compositeChildrenDidChange'),
 
   /**
    * private
@@ -611,7 +587,6 @@ DataStructures.Composite = {
    * sorry for the naming confusion.
    */
   _cmpst_unbound_compositeParentsDidChange: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_unbound_compositeParentsDidChange');
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('Composite._cmpst_unbound_compositeParentsDidChange: %@ - compositeParentsDidChange'.fmt(this.toString()), SC.A(arguments).join(':'));
 
@@ -619,43 +594,64 @@ DataStructures.Composite = {
       if (!arguments[0]) return;
 
       if (this.DEBUG_COMPOSITE)
-        SC.Logger.log('Composite._cmpst_unbound_compositeParentsDidChange: %@ adding child %@ - has child'.fmt(p.toString(), this.toString()), p.compositeHasChild(this));
+        SC.Logger.log('Composite._cmpst_unbound_compositeParentsDidChange: %@ adding child %@'.fmt(p.toString(), this.toString()));
+
       p.addCompositeChild(this);
     },this);
-  },
+  }.dsProfile('_cmpst_unbound_compositeParentsDidChange'),
 
   /**
    * private
    *
    * propogates properties from composite children into this object
    */
+  _cmpst_pendingChildPropertyChanges: null,
   _cmpst_notifyOfChildProvidedCompositePropertiesChange: function(child,keys) {
-    DataStructures.FunctionStats.startFunction('_cmpst_notifyOfChildProvidedCompositePropertiesChange');
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('Composite._cmpst_notifyOfChildProvidedCompositePropertiesChange: %@ (%@) - notified of child %@ (%@) property changes'.fmt(this.toString(), SC.hashFor(this), child.toString(),SC.hashFor(this)));
 
+    if (!this._cmpst_pendingChildPropertyChanges) {
+      this._cmpst_pendingChildPropertyChanges = [];
+    }
+
+    var scheduled = !!this._cmpst_pendingChildPropertyChanges.length;
+
     keys = keys ? SC.A(keys) : child.get('compositeProperties');
-    var myCompProps = this.get('compositeProperties');
+    this._cmpst_pendingChildPropertyChanges = this._cmpst_pendingChildPropertyChanges.concat(keys);
 
-    var changed = false;
+    if (scheduled) return;
 
-    keys.forEach(function childCompPropsIterator(p) {
-      if (!arguments[0]) return;
-      if (myCompProps.indexOf(p) < 0) {
-        myCompProps.push(p); // avoid sending KVO notifications now
-        changed = true;
-      } else {
-        // this is an optimization to avoid double notifying
-        // for existing properties. new properties will generate
-        // notifications through the call to
-        // notifyPropertyChange('compositeProperties') below
-        this.notifyPropertyChange(p);
-      }
-    }, this);
+    var task = SC.Task.create({ run: function() {
+      if (!this._cmpst_pendingChildPropertyChanges) return;
 
-    // send the KVO notifications we avoided earlier
-    if (changed) this.notifyPropertyChange('compositeProperties');
-  },
+      var myCompProps = this.get('compositeProperties');
+      var changed = false;
+      var keys = this._cmpst_pendingChildPropertyChanges.fastFlatten().uniq();
+
+      this._cmpst_pendingChildPropertyChanges = null;
+
+      keys.forEach(function childCompPropsIterator(p) {
+        if (!arguments[0]) return;
+        if (myCompProps.indexOf(p) < 0) {
+          myCompProps.push(p); // avoid sending KVO notifications now
+          changed = true;
+        } else {
+          // this is an optimization to avoid double notifying
+          // for existing properties. new properties will generate
+          // notifications through the call to
+          // notifyPropertyChange('compositeProperties') below
+          this.notifyPropertyChange(p);
+        }
+      }, this);
+
+      // send the KVO notifications we avoided earlier - this will
+      // trigger _cmpst_updateCompositePropertyMonitors to run and add
+      // all the new composite properties that we don't know about
+      if (changed) this.notifyPropertyChange('compositeProperties');
+    }.bind(this).dsProfile('_cmpst_notifyOfChildProvidedCompositePropertiesChange.task')});
+
+    this.get('taskQueue').push(task);
+  }.dsProfile('_cmpst_notifyOfChildProvidedCompositePropertiesChange'),
 
   /**
    * private
@@ -666,13 +662,23 @@ DataStructures.Composite = {
    * leaving no need to manually (un)bind
    */
   _cmpst_unbound_ownPropertyDidChange: function(target, key, value, rev) {
-    DataStructures.FunctionStats.startFunction('_cmpst_unbound_ownPropertyDidChange');
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('Composite._cmpst_unbound_ownPropertyDidChange: %@ - own property'.fmt(this.toString()),key,'did change', SC.A(arguments).join(':'));
 
     var parents = this._cmpst_Parents,
       args = SC.A(arguments);
 
+    // this inverts standard OO practice in encapsulating the behavior
+    // of the parent object here in the child - however it is more
+    // efficient for children to schedule task runs for parents rather
+    // than the more sensible things of creating tasks for each child
+    // to notify all its parents with a unique set of keys.  this is
+    // because the most common dag will have more leaves than roots,
+    // thus there will be orders of magnitude less parents than
+    // children.  for instance, if 3 children schedule the same parent for an
+    // update - that task will already be scheduled since the parents
+    // are being scheduled not children - so in this case we would
+    // have 1 task fire instead of 3.
     parents.forEach(function(p) {
       if (!arguments[0]) return;
       // since we're circumventing the normal KVO for notifying
@@ -691,7 +697,6 @@ DataStructures.Composite = {
         SC.Logger.log('Composite._cmpst_unbound_ownPropertyDidChange: child %@ adding notification for parent %@ on key %@'.fmt(this.toString(), p.toString(), key));
 
       var t = SC.Task.create({ run: function() {
-        DataStructures.FunctionStats.startFunction('Composite._cmpst_unbound_ownPropertyDidChange.task');
         if (!this.get('isCompositePiece')) return;
 
         var keys = this._cmpst_pendingNotifications;
@@ -707,32 +712,36 @@ DataStructures.Composite = {
         }
 
         this._cmpst_pendingNotifications = null;
-      }.bind(p)});
+      }.bind(p).dsProfile('_cmpst_unbound_ownPropertyDidChange.task')});
       this.get('taskQueue').push(t);
     },this);
-  },
+  }.dsProfile('_cmpst_unbound_ownPropertyDidChange'),
 
   _cmpst_monitoredProperties: null,
   /**
    * private
    */
+  _cmpst_updateCompositePropertyMonitorsScheduled: null,
   _cmpst_unbound_compositePropertiesDidChange: function(target, key, value, rev) {
-    DataStructures.FunctionStats.startFunction('_cmpst_unbound_compositePropertiesDidChange');
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('Composite._cmpst_unbound_compositePropertiesDidChange: for object %@'.fmt(this.toString()), SC.A(arguments).join(": "));
 
-    this._cmpst_updateCompositePropertyMonitors();
-  },
+    if (!this._cmpst_updateCompositePropertyMonitorsScheduled) {
+      var task = SC.Task.create({ run: function() {
+        this._cmpst_updateCompositePropertyMonitorsScheduled = null;
+        this._cmpst_updateCompositePropertyMonitors();
+      }.bind(this).dsProfile('_cmpst_unbound_compositePropertiesDidChange.task')});
+      this.get('taskQueue').push(task);
+    }
+  }.dsProfile('_cmpst_unbound_compositePropertiesDidChange'),
 
   _cmpst_updateCompositePropertyMonitors: function() {
-    DataStructures.FunctionStats.startFunction('_cmpst_updateCompositePropertyMonitors');
-    if (!this._cmpst_monitoredProperties) {
-      this._cmpst_monitoredProperties = {};
-    }
+    if (!this._cmpst_monitoredProperties)this._cmpst_monitoredProperties = {};
+    if (!this._cmpst_unmonitoredProperties) this._cmpst_unmonitoredProperties = {};
 
     this.compositeProperties.forEach(function(cProp) {
       if (!arguments[0]) return;
-      if (this._cmpst_monitoredProperties[cProp]) return;
+      if (this._cmpst_monitoredProperties[cProp]) return;// || this[cProp] === undefined) return;
 
       // turn this property into something different... mwahahahahahaha
       this._cmpst_addDynamicProperty(cProp);
@@ -742,22 +751,21 @@ DataStructures.Composite = {
       this.notifyPropertyChange(cProp); // alert the parents
       this._cmpst_monitoredProperties[cProp] = true;
     },this);
-  },
+  }.dsProfile('_cmpst_updateCompositePropertyMonitors'),
 
   // TODO: this probably isn't even close to robust... but it works enough
   _cmpst_localPropertyFromPath: function(path) {
-    DataStructures.FunctionStats.startFunction('_cmpst_localPropertyFromPath');
     return path.split('.').slice(-1)[0]; // MAKE SURE THIS RETURNS A STRING
-  },
+  }.dsProfile('_cmpst_localPropertyFromPath'),
 
   /**
    * TODO: some of this is scary shit stolen from observable.js +initObservable+
    *
    * There be dragons here
    */
+  _cmpst_dynamicPropertyScheduledNotify: null,
   _cmpst_propertyCache: null,
   _cmpst_addDynamicProperty: function(fullPath) {
-    DataStructures.FunctionStats.startFunction('_cmpst_addDynamicProperty');
     var prop = this._cmpst_localPropertyFromPath(fullPath);
 
     // optimized
@@ -773,10 +781,17 @@ DataStructures.Composite = {
     // YIKES!
     // build computed property function
     var dynamicPropertyFunction = function(key,val) {
-      DataStructures.FunctionStats.startFunction('_cmpst_addDynamicProperty.dynamicPropertyFunction');
       if (arguments.length == 2) {
         this._cmpst_mutatePropertyCache(key,val);
-        this.notifyPropertyChange('compositeProperties');
+        if (!this._cmpst_dynamicPropertyScheduledNotify) {
+          var task = SC.Task.create({ run: function() {
+            // move a property from unmonitored to monitored
+            this.notifyPropertyChange('compositeProperties');
+            this._cmpst_dynamicPropertyScheduledNotify = null;
+          }.bind(this)});
+          this.get('taskQueue').push(task);
+          this._cmpst_dynamicPropertyScheduledNotify = true;
+        }
       }
 
       var ret = null, cached = this._cmpst_accessPropertyCache(key);
@@ -797,7 +812,7 @@ DataStructures.Composite = {
       }
 
       return ret;
-    }.property(); //.dynamicCompositeProperty();
+    }.dsProfile('_cmpst_dynamicProperty.%@'.fmt(prop)).property();//.cacheable(); //.dynamicCompositeProperty();
     dynamicPropertyFunction.isDynamicCompositeProperty = true;
 
     // retain any computed property keys
@@ -817,10 +832,9 @@ DataStructures.Composite = {
       // TODO: make less scary - replicating SC._object_extend stuff
       this._properties.push(prop);
     }
-  },
+  }.dsProfile('_cmpst_addDynamicProperty'),
 
   _cmpst_resetDynamicProperty: function(prop) {
-    DataStructures.FunctionStats.startFunction('_cmpst_resetDynamicProperty');
     if (!this._cmpst_propertyCache) {
       this._cmpst_propertyCache = {};
     }
@@ -829,7 +843,7 @@ DataStructures.Composite = {
       this[prop] = this._cmpst_propertyCache[prop];
       delete this._cmpst_propertyCache[prop];
     }
-  },
+  }.dsProfile('_cmpst_resetDynamicProperty'),
 
   /**
    * these functions aren't a concern of getting in the way of the
@@ -838,7 +852,6 @@ DataStructures.Composite = {
    * accessor and mutator
    */
   _cmpst_mutatePropertyCache: function(k,v) {
-    DataStructures.FunctionStats.startFunction('_cmpst_mutatePropertyCache');
     if (!this._cmpst_propertyCache) {
       this._cmpst_propertyCache = {};
     }
@@ -850,8 +863,8 @@ DataStructures.Composite = {
       this._cmpst_propertyCache[k] = v;
     }
 
-    return this; // consisten with +set+, but unnecessary
-  },
+    return this; // consisten with +set+, but.dsProfile unnecessary
+  }.dsProfile('_cmpst_mutatePropertyCache'),
 
   /**
    * TODO: the following is broken
@@ -863,7 +876,6 @@ DataStructures.Composite = {
    * this code would yield false currently
    */
   _cmpst_accessPropertyCache: function(k) {
-    DataStructures.FunctionStats.startFunction('_cmpst_accessPropertyCache');
     if (!this._cmpst_propertyCache) {
       this._cmpst_propertyCache = {};
     }
@@ -874,5 +886,5 @@ DataStructures.Composite = {
     }
 
     return this._cmpst_propertyCache[k];
-  }
+  }.dsProfile('_cmpst_accessPropertyCache')
 };

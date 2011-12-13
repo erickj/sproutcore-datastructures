@@ -16,16 +16,20 @@ DataStructures.FunctionStats = {
   dump: function() {
     SC.Logger.group('FunctionStats Dump');
     var countTotal = 0;
+
     for(var p in this._callStats) if (this._callStats.hasOwnProperty(p)) {
       var count = this._callStats[p].count;
       SC.Logger.group(p);
       SC.Logger.log("Call Count: %@".fmt(count));
       countTotal += count;
+
+      if (this._fnProfiles && this._fnProfiles[p]) {
+        SC.Logger.log("Avg. Execution Time: %@ ms".fmt(this._fnProfiles[p]/count));
+      }
       SC.Logger.groupEnd();
     }
     SC.Logger.log("Total Count:",countTotal);
     SC.Logger.groupEnd();
-
 
     SC.Logger.log(DataStructures.FunctionStats._fnProfiles);
 
@@ -38,12 +42,14 @@ DataStructures.FunctionStats = {
   }
 };
 
-Function.prototype.profile = function(name) {
+Function.prototype.dsProfile = function(name) {
   var that = this;
+
   return function() {
+    DataStructures.FunctionStats.startFunction(name);
+    DataStructures.FunctionStats._fnProfiles[name] = DataStructures.FunctionStats._fnProfiles[name] || 0;
     var start = new Date();
     var ret = that.apply(this,arguments);
-    DataStructures.FunctionStats._fnProfiles[name] = DataStructures.FunctionStats._fnProfiles[name] || 0;
     DataStructures.FunctionStats._fnProfiles[name] += new Date() - start;
     return ret;
   };

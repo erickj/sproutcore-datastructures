@@ -84,10 +84,36 @@ LOG: 0,16,0,0,15,16,0,0,15,0,16,16,0,15,0,16,0,16,0,15,0,16,0,15,0,16,0,0,16,15,
 SC.mixin(DS.Composite, {
   taskQueue: SC.TaskQueue.create({
     runLimit: 10000000000000000,
+
+    _scheduled: null,
     _taskCountObserver: function() {
-      this.run();
+      if (!this._scheduled) {
+        this.invokeLast(function() {
+          this._scheduled = false;
+          this.run();
+        });
+        this._scheduled = true;
+      }
     }.observes('taskCount')
   })
+});
+
+module("DataStructures.Composite KVO and Property Tracking", {
+  setup: function () {
+    SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
+
+    SC.run(function() {
+      SC.Logger.log('setup runloop execute');
+    });
+  },
+
+  teardown: function() {
+    SC.run(function() {
+      SC.Logger.log('teardown runloop execute');
+    });
+    SC.Logger.log('--> Teardown Test: "%@"'.fmt(this.working.test));
+    SC.Logger.groupEnd();
+  }
 });
 
 test("test load for building composites bottom up", function() {
@@ -123,9 +149,9 @@ test("test load for building composites bottom up", function() {
 
   var aForest = Forest.create();
 
-  var numTrees = 20;
-  var numBranches = 5;
-  var numLeaves = 50;
+  var numTrees = 5;
+  var numBranches = 10;
+  var numLeaves = 100;
 
   var stomataCount = 0;
   var trees = [];
@@ -182,7 +208,7 @@ test("test load for building composites bottom up", function() {
         for (var l=0; l<numLeaves; l++) {
           var lt = new Date();
 
-          var numStomata = 300;
+          var numStomata = 1;
           stomataCount += numStomata;
 //          SC.Logger.group('begin create leaf');
           leaf = Leaf.create({
@@ -225,6 +251,7 @@ test("test load for building composites bottom up", function() {
 
     runLoopWrapUpTimeStart = new Date();
   });
+
   var runLoopEndTime = new Date(),
     runLoopWrapUpTime = runLoopEndTime - runLoopWrapUpTimeStart,
     runLoopTotalTime = runLoopEndTime - runLoopStartTime;
@@ -288,8 +315,8 @@ test("test load for building composites bottom up", function() {
   // helps determine the algorithm did NOT slow down with the number
   // of elements and compute it's statistical significance
 
-  // determine standard deviation of the first 10% and last 10% of the
-  // leaf times
+  // determine standard deviation of the first 25% and last 25% of the
+  // leaf creation times
   var setSize = Math.ceil(leafTimes.length * .25);
 
   var populationVariance = function(set) {
@@ -333,12 +360,17 @@ test("test load for building composites bottom up", function() {
         if (t <= tValues[pIdx]) break;
       }
 
-      return twoTail ? tTable.p[pIdx][0] : tTable.p[pIdx][1];
+      var pValues = (tTable.p[pIdx] || tTable.p.slice(-1)[0]);
+      return twoTail ? pValues[1] : pValues[0];
     };
 
+  // remove the top and bottom 1% of outliers, the outliers on the
+  // maximum end of the range, as I've noted above, are due to GC I
+  // believe
   var sortFn = function(a,b) { return a < b ? -1 : 1; };
-  var firstSet = leafTimes.slice(0,setSize),
-    lastSet = leafTimes.slice(setSize * -1);
+  var outliers = Math.floor(setSize * 0.01);
+  var firstSet = leafTimes.slice(0,setSize).sort(sortFn).slice(outliers,-1 * outliers),
+    lastSet = leafTimes.slice(setSize * -1).sort(sortFn).slice(outliers,-1 * outliers);
 
   var firstSetMean = firstSet.reduce(firstSet.reduceAverage),
     firstSetVariance = populationVariance(firstSet),
@@ -357,11 +389,12 @@ test("test load for building composites bottom up", function() {
 
   // calculate t value using Welch's t-test
   // http://en.wikipedia.org/wiki/Welch's_t_test
+  try {
   var Xi = firstSetMean - lastSetMean,
     sTwo1 = sampleVariance(firstSet),
     sTwo2 = sampleVariance(lastSet),
     stdError = Math.sqrt(sTwo1/firstSet.length + sTwo2/lastSet.length),
-    t = Xi/stdError;
+    t = Math.abs(Xi/stdError);
 
   // calculate degrees of freedom
   var dfNumerator = Math.pow(sTwo1/firstSet.length + sTwo2/lastSet.length,2),
@@ -374,12 +407,15 @@ test("test load for building composites bottom up", function() {
   SC.Logger.log('std1/std2',firstSetStdDev,lastSetStdDev);
   SC.Logger.log('Xi', Xi);
   SC.Logger.log('stdError',stdError);
-  SC.Logger.log('t/df/p-value', t,df,pValue);
+  SC.Logger.log('t/df/p-value',t,df,pValue);
 
-  var significant = pValue <= 0.1;
-
+  var significant = pValue <= 0.05;
   if (significant) {
-    // arbitrary comparison, set 2 should be no more than 20% slower than set 1
+    // arbitrary comparison: set 2 should be no more than 20% slower
+    // than set 1.  In reality the observations I've made show set 2
+    // run faster than set 1 - but minor variations can spoil that
+    // comparison.  +20% is used as a buffer for variations in run
+    // time
     ok(lastSetMean <= firstSetMean * 1.2, 'the second set should not be more than 20% slower than the first set');
   } else {
     ok(true, "the result is not statistically signficant");
@@ -387,4 +423,15 @@ test("test load for building composites bottom up", function() {
 
   var finalWrapUpTime = (new Date()) - runLoopEndTime;
   SC.Logger.log('wrap up time: ', finalWrapUpTime);
+} catch(e) {
+  SC.Logger.error(e);
+
+  SC.Logger.log('sTwo1/sTwo2', sTwo1, sTwo2);
+  SC.Logger.log('std1/std2',firstSetStdDev,lastSetStdDev);
+  SC.Logger.log('Xi', Xi);
+  SC.Logger.log('stdError',stdError);
+  SC.Logger.log('t/df/p-value',t,df,pValue);
+
+  ok(false, 'the tests ran fine but the statistical analysis (in the test code) failed - erick (or someone) needs to fix this crash w/ calculating pValue - there is a null (or undefined) value that is acted on in the lookupPValue function.  look at that big tTable.  See the console for the error');
+}
 });
