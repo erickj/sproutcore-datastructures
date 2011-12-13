@@ -8,8 +8,16 @@
 SC.mixin(DS.Composite, {
   taskQueue: SC.TaskQueue.create({
     runLimit: 10000000000000000,
+
+    _scheduled: null,
     _taskCountObserver: function() {
-      this.run();
+      if (!this._scheduled) {
+        this.invokeLast(function() {
+          this._scheduled = false;
+          this.run();
+        });
+        this._scheduled = true;
+      }
     }.observes('taskCount')
   })
 });
@@ -383,8 +391,10 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
     characters: null
   });
 
+  SC.RunLoop.begin();
   delorian.set('characters',['Marty McFly',
                              'Doc Brown']);
+  SC.RunLoop.end();
 
   [_1985,_1955,_1885].forEach(function(y) {
     var characters = y.get('characters');
@@ -426,6 +436,7 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
 });
 
 test("allow modifying composite DAGs via altering compositeParents prop", function() {
+  SC.RunLoop.begin();
   var _1985 = SC.Object.create(DataStructures.Composite, { year: '1985'}),
     _1955 = SC.Object.create(DataStructures.Composite, { year: '1955'});
 
@@ -441,10 +452,14 @@ test("allow modifying composite DAGs via altering compositeParents prop", functi
 
   // test observing compositeParents.[]
   delorian.get('compositeParents').pushObject(_1985);
+  SC.RunLoop.end();
+
   equals(_1985.get('characters').length, 2, '1985 has 2 characters');
 
   // test observing compositeParents
+  SC.RunLoop.begin();
   delorian.set('compositeParents', [_1985, _1955]);
+  SC.RunLoop.end();
   equals(_1985.get('characters').length, 2, '1985 has 2 characters');
   equals(_1955.get('characters').length, 2, '1955 has 2 characters');
 });

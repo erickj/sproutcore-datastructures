@@ -8,8 +8,16 @@
 SC.mixin(DS.Composite, {
   taskQueue: SC.TaskQueue.create({
     runLimit: 10000000000000000,
+
+    _scheduled: null,
     _taskCountObserver: function() {
-      this.run();
+      if (!this._scheduled) {
+        this.invokeLast(function() {
+          this._scheduled = false;
+          this.run();
+        });
+        this._scheduled = true;
+      }
     }.observes('taskCount')
   })
 });
