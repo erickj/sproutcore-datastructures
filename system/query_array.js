@@ -262,7 +262,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
 
     if (!ref) return null;
 
-    if (indices && indices.isIndexSet) {
+    if (indices && SC.get(indices, 'isIndexSet')) {
       args[0] = this._translateIndexSet(indices);
     }
 
@@ -908,7 +908,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     }
 
     // handle any index shifts
-    if (indexShift && indexShift.get('isShift')) {
+    if (indexShift && SC.get(indexShift, 'isShift')) {
       if (this.DEBUG_QUERY_ARRAY) {
         SC.Logger.warn("DS.QueryArray._modifyObserverSet: Index shift detected: %@, translating IndexSet: %@".fmt(indexShift, this._indexSet));
       }
