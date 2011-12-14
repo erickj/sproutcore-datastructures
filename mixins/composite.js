@@ -812,7 +812,7 @@ DataStructures.Composite = {
       }
 
       return ret;
-    }.dsProfile('_cmpst_dynamicProperty.%@'.fmt(prop)).property();//.cacheable(); //.dynamicCompositeProperty();
+    }.dsProfile('_cmpst_dynamicProperty.%@'.fmt(prop)).property().cacheable(); //.dynamicCompositeProperty();
     dynamicPropertyFunction.isDynamicCompositeProperty = true;
 
     // retain any computed property keys

@@ -98,7 +98,37 @@ SC.mixin(DS.Composite, {
   })
 });
 
-module("DataStructures.Composite KVO and Property Tracking", {
+var Forest = SC.Object.extend(DataStructures.Composite, {
+    compositeProperties: ['trees'],
+    trees: null,
+
+    reducedCount: function(key) {
+      try {
+        var val = SC.A(this.get(key)).reduce(function(prev,current) {
+          var val = SC.isArray(current) ? current.length : parseInt(current);
+          return prev + val;
+        });
+        return val;
+      } catch(e) {
+        SC.Logger.error(e);
+        return 0;
+      }
+    }
+  }),
+  Tree = SC.Object.extend(DataStructures.Composite, {
+    compositeProperties: ['branches'],
+    branches: null
+  }),
+  Branch = SC.Object.extend(DataStructures.Composite, {
+    compositeProperties: ['leaves'],
+    leaves: null
+  }),
+  Leaf = SC.Object.extend(DataStructures.Composite, {
+    compositeProperties: ['stomata'],
+    stomata: null
+  });
+
+module("DataStructures.Composite Load Testing", {
   setup: function () {
     SC.Logger.group('--> Setup Test: "%@"'.fmt(this.working.test));
 
@@ -116,37 +146,91 @@ module("DataStructures.Composite KVO and Property Tracking", {
   }
 });
 
-test("test load for building composites bottom up", function() {
-  var Forest = SC.Object.extend(DataStructures.Composite, {
-      compositeProperties: ['trees'],
-      trees: null,
+test("test load for composite supplant", function() {
+  var numTrees = 1;
+  var numBranches = 10;
+  var numLeaves = 100;
 
-      reducedCount: function(key) {
-        try {
-          var val = SC.A(this.get(key)).reduce(function(prev,current) {
-            var val = SC.isArray(current) ? current.length : parseInt(current);
-            return prev + val;
-          });
-          return val;
-        } catch(e) {
-          SC.Logger.error(e);
-          return 0;
-        }
+  var stomataCount = 0;
+  var tree = Tree.create({
+    branches: null
+  });
+
+
+  //
+  // build a forest
+  //
+  SC.run(function() {
+    var branch, leaf;
+    var treeBranches = [];
+
+    for (var b=0; b<numBranches;b++) {
+      branch = Branch.create({
+        compositeParents: tree,
+        leaves: null
+      });
+
+      treeBranches.push(branch);
+      var branchLeaves = [];
+
+      for (var l=0; l<numLeaves; l++) {
+        var numStomata = 1;
+        stomataCount += numStomata;
+        leaf = Leaf.create({
+          compositeParents: branch,
+          stomata: numStomata
+        });
+        branchLeaves.push(leaf);
       }
-    }),
-    Tree = SC.Object.extend(DataStructures.Composite, {
-      compositeProperties: ['branches'],
-      branches: null
-    }),
-    Branch = SC.Object.extend(DataStructures.Composite, {
-      compositeProperties: ['leaves'],
-      leaves: null
-    }),
-    Leaf = SC.Object.extend(DataStructures.Composite, {
-      compositeProperties: ['stomata'],
-      stomata: null
-    });
 
+      branch.set('leaves',branchLeaves); // this is the 'hoop jumping' referred to above
+    }
+    tree.set('branches',treeBranches); // this is the 'hoop jumping' referred to above
+  });
+
+  DS.TRACK_STATS = YES;
+  DS.FunctionStats.clear();
+
+  var s;
+  // loop multiple times - we're checking that property access gets
+  // cached
+  for (var i=0;i<100;i++) s = tree.get('stomata');
+
+  DS.FunctionStats.dump();
+
+  equals(s.length, numBranches * numLeaves, 'prereq - sanity check that we have the correct number of elements');
+  equals(s.reduce(s.reduceSum),stomataCount, 'prereq - the total should be %@'.fmt(stomataCount));
+
+  ['_cmpst_accessPropertyCache','_cmpst_dynamicProperty.stomata'].forEach(function(fName) {
+    var fnCallCounts = DS.FunctionStats.countsFor(fName);
+    same(fnCallCounts, 1012, 'after +get+ calls to %@ should be cached on init'.fmt(fName));
+  });
+
+  //
+  // test caching after a set
+  //
+  var increment = 10;
+  SC.RunLoop.begin();
+  tree.get('branches')[0].get('leaves')[0].set('stomata',1 + increment);
+  SC.RunLoop.end();
+
+  DS.TRACK_STATS = YES;
+  DS.FunctionStats.clear();
+
+  s = tree.get('stomata');
+
+  DS.FunctionStats.dump();
+
+  equals(s.reduce(s.reduceSum),stomataCount, 'prereq - the total should be %@'.fmt(stomataCount + increment));
+
+  ['_cmpst_accessPropertyCache','_cmpst_dynamicProperty.stomata'].forEach(function(fName) {
+    var fnCallCounts = DS.FunctionStats.countsFor(fName);
+    same(fnCallCounts, 12, 'after +set+ on 1 leaf, calls to %@ should be cached for the rest of the dag'.fmt(fName));
+  });
+
+});
+
+test("test load for building composites bottom up", function() {
   var aForest = Forest.create();
 
   var numTrees = 5;

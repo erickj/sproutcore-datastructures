@@ -38,7 +38,12 @@ DataStructures.FunctionStats = {
 
   clear: function() {
     this._callStats = {};
+    this._fnProfiles = {};
     return this;
+  },
+
+  countsFor: function(name) {
+    return this._callStats[name] && this._callStats[name].count || null;
   }
 };
 
