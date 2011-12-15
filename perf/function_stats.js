@@ -5,8 +5,6 @@ DataStructures.FunctionStats = {
   _fnProfiles: {},
 
   startFunction: function(name) {
-    if (!DataStructures.TRACK_STATS) return this;
-
     this._callStats[name] = this._callStats[name] || {};
     this._callStats[name].count = this._callStats[name].count || 0;
     this._callStats[name].count++;
