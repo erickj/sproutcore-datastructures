@@ -217,21 +217,20 @@ DataStructures.Composite = {
   doCompositeOperation: function(op,args) {
     if (!this.get('isCompositePiece')) return null;
 
-    var composites = this.get('compositeList'),
+    var composites = [this].concat(this.get('compositeChildren')),
       ret = [];
 
     args = SC.A(args);
-    composites.forEach(function(c) {
-      if (!arguments[0]) return;
-      try {
-        c._cmpst_isCollecting = YES;
-        var v = c[op].apply(c,args);
-        if (SC.none(v)) return;
-        ret = ret.concat(v);
-      } finally {
-        c._cmpst_isCollecting = NO;
-      }
-    });
+    for (var i=0;i<composites.length;i++) {
+      var c = composites[i];
+      if (!c) continue;
+
+      c._cmpst_isCollecting = YES;
+
+      var v = c[op].apply(c,args);
+      if (!SC.none(v)) ret = ret.concat(v);
+      c._cmpst_isCollecting = NO;
+    };
 
     return ret;
   }.dsProfile('doCompositeOperation'),
@@ -607,9 +606,6 @@ DataStructures.Composite = {
    */
   _cmpst_pendingChildPropertyChanges: null,
   _cmpst_notifyOfChildProvidedCompositePropertiesChange: function(child,keys) {
-    if (this.DEBUG_COMPOSITE)
-      SC.Logger.log('Composite._cmpst_notifyOfChildProvidedCompositePropertiesChange: %@ (%@) - notified of child %@ (%@) property changes'.fmt(this.toString(), SC.hashFor(this), child.toString(),SC.hashFor(this)));
-
     if (!this._cmpst_pendingChildPropertyChanges) {
       this._cmpst_pendingChildPropertyChanges = [];
     }
@@ -621,12 +617,18 @@ DataStructures.Composite = {
 
     if (scheduled) return;
 
+    if (this.DEBUG_COMPOSITE)
+      SC.Logger.log('Composite._cmpst_notifyOfChildProvidedCompositePropertiesChange: %@ scheduled for keys %@'.fmt(this.toString(), keys));
+
     var task = SC.Task.create({ run: function() {
       if (!this._cmpst_pendingChildPropertyChanges) return;
 
       var myCompProps = this.get('compositeProperties');
       var changed = false;
       var keys = this._cmpst_pendingChildPropertyChanges.fastFlatten().uniq();
+
+      if (this.DEBUG_COMPOSITE)
+        SC.Logger.log('Composite._cmpst_notifyOfChildProvidedCompositePropertiesChange.task: %@ running for keys %@'.fmt(this.toString(), keys));
 
       this._cmpst_pendingChildPropertyChanges = null;
 
@@ -641,6 +643,17 @@ DataStructures.Composite = {
           // notifications through the call to
           // notifyPropertyChange('compositeProperties') below
           this.notifyPropertyChange(p);
+
+          // TODO: track this hack down more - this hack fixes the
+          // cached property key from being incorrect. here's what I
+          // know, after an object calls notifyPropertyChange(p)
+          // above, this._kvo_cache is cleared for the current dynamic
+          // property.  Somewhere between here and the end of the
+          // runLoop this._kvo_cache is repopulated with the old
+          // value.  Getting the value here seems to cache the correct
+          // value.  Commenting out this line will make two of the
+          // assertions in the composite/kvo_and_properties test fail
+//          this.get(p);
         }
       }, this);
 
@@ -763,6 +776,14 @@ DataStructures.Composite = {
    *
    * There be dragons here
    */
+  set: function(key,value) {
+    var func = this[key];
+    if (func && func.isProperty && func.isCacheable && this._kvo_cache) {
+      this._kvo_cache[func.cacheKey] = undefined ;
+    }
+    return sc_super();
+  },
+
   _cmpst_dynamicPropertyScheduledNotify: null,
   _cmpst_propertyCache: null,
   _cmpst_addDynamicProperty: function(fullPath) {
@@ -794,8 +815,23 @@ DataStructures.Composite = {
         }
       }
 
-      var ret = null, cached = this._cmpst_accessPropertyCache(key);
+      var cached = this._cmpst_accessPropertyCache(key),
+        ret = cached;
 
+      if (!this.get('compositeIsLeaf')) {
+        ret = SC.A(cached);
+
+        var children = this.compositeSortChildren(); //this.get('compositeChildren');
+        for (var i=0;i<children.length;i++) {
+          if (!children[i]) continue;
+          ret = ret.concat(children[i].get(key)).compact().without(undefined);
+        }
+
+        if (this.compositeUniqueValues && ret.uniq)
+          ret = ret.uniq();
+      }
+
+/*
       if (!this._cmpst_isCollecting) {
         ret = this.doCompositeOperation('get',[key]);
 
@@ -810,6 +846,7 @@ DataStructures.Composite = {
       } else {
         ret = cached;
       }
+*/
 
       return ret;
     }.dsProfile('_cmpst_dynamicProperty.%@'.fmt(prop)).property().cacheable(); //.dynamicCompositeProperty();

@@ -31,20 +31,14 @@ module("DataStructures.Composite DAG Managment", {
     var component = {
       horsePower: null,
       getHorsePower: function() {
-        var hp = this.doCompositeOperation('get', 'horsePower');
-
-        return hp.reduce(function(prev,item) {
-          return prev + item;
-        },0);
+        var hp = this.get('horsePower');
+        return hp.reduce ? hp.reduce(function(prev,item) { return prev + item; },0) : hp;
       },
 
       weight: null,
       getWeight: function() {
-        var componentWeights = this.doCompositeOperation('get', 'weight');
-
-        return componentWeights.reduce(function(prev,item) {
-                                         return prev + item;
-                                       },0);
+        var w = this.get('weight');
+        return w.reduce ? w.reduce(function(prev,item) { return prev + item; },0) : w;
       }
     };
 
@@ -190,31 +184,35 @@ test("composite supplant", function() {
   var camaro, camaro2011, v8Engine, superCharger;
 
   camaro = Car.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 2000,
     horsePower: 250
   });
 
   SC.run(function() {
     v8Engine = Part.create({
+      compositeProperties: ['weight','horsePower'],
       compositeParents: camaro,
       weight: 300,
       horsePower: 100
     });
 
     superCharger = Part.create({
+      compositeProperties: ['weight','horsePower'],
       compositeParents: v8Engine,
       weight: 10,
       horsePower: 50
     });
 
     camaro2011 = Car.create({
+      compositeProperties: ['weight','horsePower'],
       weight: 1000,
       horsePower: 300
     });
   });
 
-  equals(camaro.getHorsePower(), 400, 'camaro should have children as normal');
-  equals(camaro2011.getHorsePower(), 300, 'camaro2011 should have no children');
+  equals(camaro.getHorsePower(), 400, 'prereq - camaro should have children as normal');
+  equals(camaro2011.getHorsePower(), 300, 'prereq - camaro2011 should have no children');
 
   SC.run(function() {
     camaro2011.compositeSupplant(camaro);
@@ -232,6 +230,7 @@ test("composite supplant", function() {
  */
 test("a composite can add/remove children and perform operations", function () {
   var camaro = Car.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 2000,
     horsePower: 250
   });
@@ -239,19 +238,21 @@ test("a composite can add/remove children and perform operations", function () {
   equals(camaro.getWeight(), 2000, 'calculating stock camaro weight');
 
   var v8Engine = Part.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 300,
     horsePower: 100
   });
 
   var superCharger = Part.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 10,
     horsePower: 50
   });
 
-  SC.run(function() {
-    v8Engine.addCompositeChild(superCharger);
-    camaro.addCompositeChild(v8Engine);
-  });
+  SC.RunLoop.begin();
+  v8Engine.addCompositeChild(superCharger);
+  camaro.addCompositeChild(v8Engine);
+  SC.RunLoop.end();
 
   equals(v8Engine.getWeight(), 310, 'calculating engine weight');
   equals(camaro.getWeight(), 2310, 'calculating modified camaro weight');
@@ -268,6 +269,7 @@ test("a composite can add/remove children and perform operations", function () {
   equals(camaro.getWeight(), 2300, 'calculating un-supercharged camaro weight');
 
   var racingSeats = Part.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 50,
     horsePower: null
   });
@@ -281,6 +283,7 @@ test("a composite can add/remove children and perform operations", function () {
 
   // composing bottom up also works
   var mustang = Car.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 2200,
     horsePower: 280
   });
@@ -292,6 +295,7 @@ test("a composite can add/remove children and perform operations", function () {
   equals(mustang.getWeight(), 2500, 'can also add composite pieces bottom up');
 
   var restrictorPlate = Part.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 30,
     horsePower: -50
   });
@@ -306,16 +310,19 @@ test("a composite can add/remove children and perform operations", function () {
 
 test("composite should throw error when adding a destroyed child/parent", function() {
   var camaro = Car.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 2000,
     horsePower: 250
   });
 
   var v8Engine = Part.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 300,
     horsePower: 100
   });
 
   var superCharger = Part.create({
+    compositeProperties: ['weight','horsePower'],
     weight: 10,
     horsePower: 50
   });
@@ -401,6 +408,7 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
     equals(characters.length, 2, 'the year %@ should have 2 people'.fmt(y.get('year')));
   });
 
+  SC.RunLoop.begin();
   // also test that the composites can be different
   _1955.set('characters', ['Martys Teen Mom',
                            'BTTF 1: Marty McFly',
@@ -409,10 +417,30 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
                            'Old Biff from the Future']);
 
   _1885.set('characters', ['Clara Clayton', 'Maddog Tannen']);
+  SC.RunLoop.end();
 
-  equals(_1985.get('characters').length, 2, '1985 has 2 characters');
-  equals(_1955.get('characters').length, 7, '1985 has 7 characters');
-  equals(_1885.get('characters').length, 4, '1885 has 4 characters');
+  var _1985Characters = _1985.get('characters');
+  var _1955Characters = _1955.get('characters');
+  var _1885Characters = _1885.get('characters');
+
+  equals(_1985Characters.length, 2, '1985 has 2 characters');
+  ok(_1985Characters.contains('Marty McFly'),'Marty McFly should be in 1985');
+  ok(_1985Characters.contains('Doc Brown'),'Doc Brown should be in 1985');
+
+  equals(_1955Characters.length, 7, '1955 has 7 characters');
+  ok(_1955Characters.contains('Marty McFly'),'Marty McFly should be in 1955');
+  ok(_1955Characters.contains('Doc Brown'),'Doc Brown should be in 1955');
+  ok(_1955Characters.contains('Martys Teen Mom'),'Martys Teen Mom should be in 1955');
+  ok(_1955Characters.contains('BTTF 1: Marty McFly'),'BTTF 1: Marty McFly should be in 1955');
+  ok(_1955Characters.contains('BTTF 1: Doc Brown'),'BTTF 1: Doc Brown should be in 1955');
+  ok(_1955Characters.contains('Young Biff'),'Young Biff should be in 1955');
+  ok(_1955Characters.contains('Old Biff from the Future'),'Old Biff from the Future should be in 1955');
+
+  equals(_1885Characters.length, 4, '1885 has 4 characters');
+  ok(_1885Characters.contains('Clara Clayton'), 'Clara Clayton should be in 1885');
+  ok(_1885Characters.contains('Maddog Tannen'), 'Maddog Tannen should be in 1885');
+  ok(_1885Characters.contains('Doc Brown'), 'Doc Brown should be in 1885');
+  ok(_1885Characters.contains('Marty McFly'), 'Marty McFly should be in 1885');
 
   SC.RunLoop.begin();
   var timeTrain = SC.Object.create(DataStructures.Composite, {
@@ -423,10 +451,12 @@ test("a composite member can have multiple parents... watch out for paradoxes", 
   SC.RunLoop.end();
 
   equals(_1985.get('characters').length, 4, 'after train enters 1985 and 1885, 1985 has 4 characters');
-  equals(_1955.get('characters').length, 7, 'after train enters 1985 and 1885, 1985 has 7 characters');
+  equals(_1955.get('characters').length, 7, 'after train enters 1985 and 1885, 1955 has 7 characters');
   equals(_1885.get('characters').length, 6, 'after train enters 1985 and 1885, 1885 has 6 characters');
 
+  SC.RunLoop.begin();
   _1885.removeCompositeChild(delorian);
+  SC.RunLoop.end();
 
   equals(_1985.get('characters').length, 4, 'after delorian leave 1885, 1985 has 4 characters');
   equals(_1955.get('characters').length, 7, 'after delorian leave 1885, 1955 has 7 characters');

@@ -139,10 +139,10 @@ test("compositeProperties should be observable and propogate changes up the comp
     name: 'forest',
     didChangeCount: 0,
     allTheLeaves: function() {
-      return this.doCompositeOperation('get','leaves')
+      return SC.A(this.get('leaves'))
         .reduce(function(prev,cur) {
           return prev + cur;
-        });
+        },0);
     },
     _leavesDidChange: function() {
       var val = this.allTheLeaves();
@@ -182,7 +182,7 @@ test("compositeProperties should be observable and propogate changes up the comp
   ok(tree1.compositeProperties.indexOf('branches') > -1, "branches should be in tree1's compositeProperties array");
 
   var branches = forest.get('branches'),
-    branchCount = branches.reduce(function(p,c) {
+    branchCount = SC.A(branches).reduce(function(p,c) {
       return p+c;
     });
   equals(branchCount, 2, '2 branches should have been auto added to the compositeProperty list (one from each tree)');
@@ -194,7 +194,6 @@ test("compositeProperties should be observable and propogate changes up the comp
 
   SC.RunLoop.begin();
   SC.Logger.log('begin setting leaves values on tree1 and tree2');
-//debugger;
   tree1.set('leaves', 150);
   tree2.set('leaves', 50);
   SC.Logger.log('end setting leaves values on tree1 and tree2');
@@ -234,8 +233,8 @@ test("compositeProperties should be observable and propogate changes up the comp
   });
   SC.RunLoop.end();
 
-  equals(tree1.get('leaves').reduce(function(p,c){return p+c;}), 1150);
-  equals(tree2.get('leaves').reduce(function(p,c){return p+c;}), 650);
+  equals(SC.A(tree1.get('leaves')).reduce(function(p,c){return p+c;}), 1150);
+  equals(SC.A(tree2.get('leaves')).reduce(function(p,c){return p+c;}), 650);
   equals(forest._unboundValue, 1800, 'branch additions should percolate up');
 
   SC.run(function() {
@@ -299,7 +298,7 @@ test("composite should notify of property change when a composite child is remov
   equals(contact.propUpdateCounts.fuzzy,2,'there should be 2 update for fuzzy after delete');
 });
 
-test("composite shoudl propogate new computed properties even in the face of caching", function() {
+test("composite should propogate new computed properties through caches", function() {
   var Comp = SC.Object.extend(DataStructures.Composite);
 
   var contact = Comp.create();
@@ -407,6 +406,7 @@ test('orig values remain as primitive or array', function() {
   SC.RunLoop.end();
 
   ok(aComposite.get('aPrimitive') === 1, 'aPrimitive should equal 1 - while aComposite is a leaf');
+  equals(SC.typeOf(aComposite.get('anArray')),SC.T_ARRAY,'anArray should be an array');
   ok(aComposite.get('anArray').indexOf(1) >= 0, 'anArray should contain "1"');
 
   SC.RunLoop.begin();
@@ -418,10 +418,12 @@ test('orig values remain as primitive or array', function() {
   });
   SC.RunLoop.end();
 
+  SC.RunLoop.begin();
   aComposite.set('aPrimitive',2);
   aComposite.set('anArray',['a','b','c']);
+  SC.RunLoop.end();
 
-  ok(aComposite.get('aPrimitive').indexOf(2) >= 0, 'aPrimitive should be an array that contains 2 once aComposite hasChildren');
+  ok(aComposite.get('aPrimitive').indexOf(2) === 0, 'aPrimitive should be an array that contains 2 once aComposite hasChildren');
   ok(aComposite.get('anArray').indexOf('a') >= 0, 'anArray should contain "a"');
   ok(aComposite.get('anArray').indexOf('d') >= 0, 'anArray should contain "a"');
 });

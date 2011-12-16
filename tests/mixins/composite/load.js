@@ -203,7 +203,7 @@ test("test load for composite supplant", function() {
 
   ['_cmpst_accessPropertyCache','_cmpst_dynamicProperty.stomata'].forEach(function(fName) {
     var fnCallCounts = DS.FunctionStats.countsFor(fName);
-    same(fnCallCounts, 1012, 'after +get+ calls to %@ should be cached on init'.fmt(fName));
+    same(fnCallCounts, 1011, 'after +get+ calls to %@ should be cached on init'.fmt(fName));
   });
 
   //
@@ -221,11 +221,12 @@ test("test load for composite supplant", function() {
 
   DS.FunctionStats.dump();
 
-  equals(s.reduce(s.reduceSum),stomataCount, 'prereq - the total should be %@'.fmt(stomataCount + increment));
+  equals(s.reduce(s.reduceSum),stomataCount + increment,
+         'prereq - the total should be %@'.fmt(stomataCount + increment));
 
   ['_cmpst_accessPropertyCache','_cmpst_dynamicProperty.stomata'].forEach(function(fName) {
     var fnCallCounts = DS.FunctionStats.countsFor(fName);
-    same(fnCallCounts, 12, 'after +set+ on 1 leaf, calls to %@ should be cached for the rest of the dag'.fmt(fName));
+    same(fnCallCounts, 2, 'after +set+ on 1 leaf, calls to %@ should be cached for the rest of the dag'.fmt(fName));
   });
 
 });
