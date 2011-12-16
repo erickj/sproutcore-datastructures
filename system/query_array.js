@@ -599,12 +599,15 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
     if (SC.isEqual(this._refArr_cached, this.get('referenceArray')))
       return;
 
+    var query = this.get('query');
+    var obsProps = SC.A(SC.get(query,'observeProperties') || '*');
+
     var oldArray = this._refArr_cached,
       newArray = this.get('referenceArray'),
       fnArrDidChange = this._refArrElems_didChange,
       fnArrWillChange = this._refArrElems_willChange,
       fnPropDidChange = this._refArrEl_propDidChange,
-      key = '@each.*';
+      keys = obsProps.map(function(p) { return '@each.%@'.fmt(p); });
 
     if (oldArray) {
       oldArray.removeArrayObservers({
@@ -615,7 +618,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
 
       // TODO: this is fucked up - this doesn't unbind
       // @see query_array tests "exposes unbind error"
-      oldArray.removeObserver(key,this,fnPropDidChange);
+      keys.forEach(function(key) { oldArray.removeObserver(key,this,fnPropDidChange); }.bind(this));
     }
 
     if (newArray) {
@@ -626,7 +629,7 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
       });
 
       // TODO: how slow is this?
-      newArray.addObserver(key,this,fnPropDidChange);
+      keys.forEach(function(key) { newArray.addObserver(key,this,fnPropDidChange); }.bind(this));
     }
 
     this._indexSet.replace(SC.IndexSet.create());
@@ -887,7 +890,10 @@ DataStructures.QueryArray = SC.Object.extend(SC.Array, SC.DelegateSupport, {
         }
 
         this.arrayContentDidChange(notifyStart, removals, additions);
-        this.enumerableContentDidChange();
+        // TODO: there is a bug in SC.Array, calling
+        // arrayContentDidChange then enumerableContentDidChange just
+        // sends double notifications on []
+//        this.enumerableContentDidChange();
 
         if (this.DEBUG_QUERY_ARRAY) {
           SC.Logger.log('DS.QueryArray: time remaining %@ ms'.fmt(timeRemaining()));

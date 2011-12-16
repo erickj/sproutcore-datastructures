@@ -279,6 +279,37 @@ test("QueryArray can provide query parameters", function() {
   ok(qa.get('length') === 3, 'the query reference array values should get mapped on comparison');
 });
 
+test("QueryArray can provide observeProperties to specify @each observers", function() {
+  SC.RunLoop.begin();
+  qa = DataStructures.QueryArray.create({
+    referenceArray: [1,2,3,4,5,6,7,8,9,10].map(function(i) { return SC.Object.create({value:i}); }),
+    query: SC.Query.create({
+      conditions: 'value > 5',
+      observeProperties: 'value'
+    })
+  });
+
+  var qa2 = DataStructures.QueryArray.create({
+    referenceArray: [1,2,3,4,5,6,7,8,9,10].map(function(i) { return SC.Object.create({value:i}); }),
+    query: SC.Query.create({
+      conditions: 'value > 5',
+      observeProperties: 'foobar'
+    })
+  });
+  SC.RunLoop.end();
+
+  equals(qa.get('length'),5, 'prereq - the qa should have 5 elements');
+  equals(qa2.get('length'),5, 'prereq - the qa2 should have 5 elements');
+
+  SC.RunLoop.begin();
+  qa.referenceArray.lastObject().set('value',0);
+  qa2.referenceArray.lastObject().set('value',0);
+  SC.RunLoop.end();
+
+  equals(qa.get('length'),4, 'qa should have observed changed value');
+  equals(qa2.get('length'),5, 'qa2 should have been oblivious to changed value');
+});
+
 test("QueryArray can be given query objects with no +parse+ method", function() {
   var noParseQuery = {
     contains: function() {
