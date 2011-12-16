@@ -560,7 +560,7 @@ DataStructures.Composite = {
   _cmpst_unbound_compositeChildrenDidChange: function(target,key,val,rev) {
     if (this._cmpst_unbound_compositeChildrenDidChangeScheduled) return;
 
-    var task = SC.Task.create({ run: function() {
+    var task = { run: function() {
       if (this.DEBUG_COMPOSITE)
         SC.Logger.log('Composite._cmpst_unbound_compositeChildrenDidChange.task: %@ (%@) at %@ - key = %@ compositeChildrenDidChange'.fmt(this.toString(), SC.hashFor(this), rev, key),  SC.A(arguments).join(':'));
 
@@ -569,7 +569,7 @@ DataStructures.Composite = {
         p.notifyPropertyChange('compositeChildren');
       });
       this._cmpst_unbound_compositeChildrenDidChangeScheduled = null;
-    }.bind(this).dsProfile('_cmpst_unbound_compositeChildrenDidChange.task')});
+    }.bind(this).dsProfile('_cmpst_unbound_compositeChildrenDidChange.task')};
 
     this._cmpst_unbound_compositeChildrenDidChangeScheduled = true;
     this.get('taskQueue').push(task);
@@ -620,7 +620,7 @@ DataStructures.Composite = {
     if (this.DEBUG_COMPOSITE)
       SC.Logger.log('Composite._cmpst_notifyOfChildProvidedCompositePropertiesChange: %@ scheduled for keys %@'.fmt(this.toString(), keys));
 
-    var task = SC.Task.create({ run: function() {
+    var task = { run: function() {
       if (!this._cmpst_pendingChildPropertyChanges) return;
 
       var myCompProps = this.get('compositeProperties');
@@ -661,7 +661,7 @@ DataStructures.Composite = {
       // trigger _cmpst_updateCompositePropertyMonitors to run and add
       // all the new composite properties that we don't know about
       if (changed) this.notifyPropertyChange('compositeProperties');
-    }.bind(this).dsProfile('_cmpst_notifyOfChildProvidedCompositePropertiesChange.task')});
+    }.bind(this).dsProfile('_cmpst_notifyOfChildProvidedCompositePropertiesChange.task')};
 
     this.get('taskQueue').push(task);
   }.dsProfile('_cmpst_notifyOfChildProvidedCompositePropertiesChange'),
@@ -709,7 +709,7 @@ DataStructures.Composite = {
       if (this.DEBUG_COMPOSITE)
         SC.Logger.log('Composite._cmpst_unbound_ownPropertyDidChange: child %@ adding notification for parent %@ on key %@'.fmt(this.toString(), p.toString(), key));
 
-      var t = SC.Task.create({ run: function() {
+      var t = { run: function() {
         if (!this.get('isCompositePiece')) return;
 
         var keys = this._cmpst_pendingNotifications;
@@ -725,7 +725,7 @@ DataStructures.Composite = {
         }
 
         this._cmpst_pendingNotifications = null;
-      }.bind(p).dsProfile('_cmpst_unbound_ownPropertyDidChange.task')});
+      }.bind(p).dsProfile('_cmpst_unbound_ownPropertyDidChange.task')};
       this.get('taskQueue').push(t);
     },this);
   }.dsProfile('_cmpst_unbound_ownPropertyDidChange'),
@@ -740,10 +740,10 @@ DataStructures.Composite = {
       SC.Logger.log('Composite._cmpst_unbound_compositePropertiesDidChange: for object %@'.fmt(this.toString()), SC.A(arguments).join(": "));
 
     if (!this._cmpst_updateCompositePropertyMonitorsScheduled) {
-      var task = SC.Task.create({ run: function() {
+      var task = { run: function() {
         this._cmpst_updateCompositePropertyMonitorsScheduled = null;
         this._cmpst_updateCompositePropertyMonitors();
-      }.bind(this).dsProfile('_cmpst_unbound_compositePropertiesDidChange.task')});
+      }.bind(this).dsProfile('_cmpst_unbound_compositePropertiesDidChange.task')};
       this.get('taskQueue').push(task);
     }
   }.dsProfile('_cmpst_unbound_compositePropertiesDidChange'),
@@ -805,11 +805,11 @@ DataStructures.Composite = {
       if (arguments.length == 2) {
         this._cmpst_mutatePropertyCache(key,val);
         if (!this._cmpst_dynamicPropertyScheduledNotify) {
-          var task = SC.Task.create({ run: function() {
+          var task = { run: function() {
             // move a property from unmonitored to monitored
             this.notifyPropertyChange('compositeProperties');
             this._cmpst_dynamicPropertyScheduledNotify = null;
-          }.bind(this)});
+          }.bind(this)};
           this.get('taskQueue').push(task);
           this._cmpst_dynamicPropertyScheduledNotify = true;
         }
@@ -830,23 +830,6 @@ DataStructures.Composite = {
         if (this.compositeUniqueValues && ret.uniq)
           ret = ret.uniq();
       }
-
-/*
-      if (!this._cmpst_isCollecting) {
-        ret = this.doCompositeOperation('get',[key]);
-
-        if (this.compositeUniqueValues && ret.uniq)
-          ret = ret.uniq();
-
-        if (this.get('compositeIsLeaf')
-            && SC.typeOf(cached) != SC.T_ARRAY
-            && ret.length <= 1) {
-          ret = ret[0]; // preserve the array/non-arrayness of values
-        }
-      } else {
-        ret = cached;
-      }
-*/
 
       return ret;
     }.dsProfile('_cmpst_dynamicProperty.%@'.fmt(prop)).property().cacheable(); //.dynamicCompositeProperty();
