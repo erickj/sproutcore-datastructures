@@ -625,7 +625,7 @@ DataStructures.Index = DataStructures.Index.extend({
         action.call(target, keySet, removedCount, addedCount, this);
       }
     }
-  },
+  }.dsProfile('DS.Index.indexContentWillChange'),
 
   indexContentDidChange: function(keySet, removedCount, addedCount) {
     var rangeob = this._array_rangeObservers,
@@ -655,7 +655,7 @@ DataStructures.Index = DataStructures.Index.extend({
     this.endPropertyChanges();
 
     return this ;
-  }
+  }.dsProfile('DS.Index.indexContentDidChange')
 });
 
 /**

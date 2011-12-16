@@ -25,10 +25,10 @@ DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, 
   index: null,
 
   indexSet: function() {
-    var cached,cacheArgs = SC.A(arguments);
-    if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
-      return cached;
-    }
+//    var cached,cacheArgs = SC.A(arguments);
+//    if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
+//      return cached;
+//    }
 
     var index = this.get('index');
     if (!index) return null;
@@ -37,8 +37,8 @@ DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, 
     var set = index.indexSetForKeys(this.get('keySet'), doKeyTransform);
     set.source = index;
 
-    return this._simpleCacheStore(arguments.callee,cacheArgs,set);
-  }.property('index', 'doKeyTransform'),//.cacheable(),
+    return set; //this._simpleCacheStore(arguments.callee,cacheArgs,set);
+  }.dsProfile('DS.ResultSet.indexSet').property('index', 'doKeyTransform').cacheable(),
 
   // you probably just want to leave this alone
   doKeyTransform: NO,
@@ -87,7 +87,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, 
       });
       this._cachedIndex = i;
     }
-  }.observes('index'),
+  }.dsProfile('DS.ResultSet._indexObjectDidChange').observes('index'),
 
   _indexWillChange: function(keySet, removed, added) {
     return;
@@ -108,7 +108,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, 
       this._simpleCacheClear();
       this.notifyPropertyChange('indexSet');
     }
-  },
+  }.dsProfile('DS.ResultSet._indexDidChange'),
 
   _prevIndexSetLen: null,
   _arrayChangeNotificationObserver: function() {
@@ -144,25 +144,31 @@ DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, 
     if (this.DEBUG_RESULT_SET) SC.Logger.log('Result Set content changed',[start,removed,added]);
     this._prevIndexSetLen = set.get('length');
 
-    this._clone = []; // this is used by _calculateStartIndexOnChange for historical comparison
-    for (var i=0;i<this.get('length');i++)
-      this._clone[this._clone.length] = this.objectAt(i);
-  }.observes('indexSet'),
+    this._clone = set.clone(); // this is used by _calculateStartIndexOnChange for historical comparison
+  }.dsProfile('DS.ResultSet._arrayChangeNotificationObserver').observes('indexSet'),
 
   // need to calculate the right deltas for incremental changes for query arrays
   _calculateStartIndexOnChange: function(isAdd) {
     if (!this._clone) return 0;
 
     var ret;
-    for (var i=0;i<this.get('length');i++) {
-      ret = i;
-      if (this.objectAt(i) !== this._clone[i]) break;
+    var set = this.get('indexSet');
 
-      if (isAdd && i==this.get('length')-1) ret += 1;
-    }
+    var outer = isAdd ? set : this._clone;
+    var inner = isAdd ? this._clone : set;
+
+    outer.forEachRange(function(rngStart,rngLen) {
+      if (!SC.none(ret)) return;
+      if (!inner.contains(rngStart,rngLen)) {
+        outer.forEachIn(rngStart,rngLen,function(i) {
+          if (!SC.none(ret)) return;
+          if (!inner.contains(i)) ret = i;
+        });
+      }
+    });
 
     return ret;
-  },
+  }.dsProfile('DS.ResultSet._calculateStartIndexOnChange'),
 
   _teardownContentObservers: function() {
     // avoid error: "Uncaught TypeError: Cannot call method '_kvo_for' of null"
@@ -203,7 +209,7 @@ DataStructures.Index.ResultSet = SC.Object.extend(DS.SimpleCache, SC.CoreArray, 
     return this._simpleCacheStore(arguments.callee,
                                   cacheArgs,
                                   this.get('index').objectAt(innerIdx));
-  },
+  }.dsProfile('DS.ResultSet.objectAt'),
 
   replace: function() {
     throw new Error("ResultSets are immutable!");
