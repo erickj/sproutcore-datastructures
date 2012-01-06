@@ -151,8 +151,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, DS.SimpleCache, {
     doTransform = SC.none(doTransform) ? false : !!doTransform;
 
     var keySet = this._keySetForKey(keys, doTransform),
-      lenKeys = keySet.get('length'),
-      indexSetForKey;
+      lenKeys = keySet.get('length');
 
     var cached,cacheArgs = [keySet,doTransform];
     if ((cached = this._simpleCacheFetch(arguments.callee,cacheArgs))) {
@@ -167,16 +166,38 @@ DataStructures.Index = SC.Object.extend(SC.Array, DS.SimpleCache, {
 
     for(var i=0;i<lenKeys;i++) {
       var tmpKey = keySet.objectAt(i);
+//      var indexSetForKey;
+      var ranges = [];
 
       if (tmpKey.test) { //regex
-        indexSetForKey = SC.IndexSet.create();
-        for (var p in this._keyMap) if (this._keyMap.hasOwnProperty(p) && tmpKey.test(p))
-          indexSetForKey.add(this._keyMap[p]);
-      } else {
-        indexSetForKey = this._keyMap[keySet.objectAt(i)];
+//        indexSetForKey = SC.IndexSet.create();
+        for (var p in this._keyMap) if (this._keyMap.hasOwnProperty(p) && tmpKey.test(p)) {
+//          indexSetForKey.add(this._keyMap[p]);
+          this._keyMap[p].forEachRange(function(s,l) {
+                                         ranges.push([s,l]);
+                                       });
+        }
+      } else if (this._keyMap[tmpKey]) {
+//        indexSetForKey = this._keyMap[keySet.objectAt(i)];
+        this._keyMap[tmpKey].forEachRange(function(s,l) {
+                                            ranges.push([s,l]);
+                                          });
       }
 
-      ret.add(indexSetForKey); // union the SC.IndexSets
+      // hack around problem in index set
+      var indices = [];
+      ranges.forEach(function(range) {
+                       var start = range[0], len = range[1];
+                       for (var i=0;i<len;i++) {
+                         indices.push(start + i);
+                       }
+                     });
+
+      indices.uniq().sort().forEach(function(i) {
+                                      ret.add(i,1);
+                                    });
+
+//      ret.add(indexSetForKey); // union the SC.IndexSets
     }
 
     return this._simpleCacheStore(arguments.callee,cacheArgs,ret);
