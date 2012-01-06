@@ -372,9 +372,7 @@ DataStructures.Index = SC.Object.extend(SC.Array, DS.SimpleCache, {
         // edit keyMap
         idxSet = this._keyMap[insertionKey];
         if (!idxSet) {
-          idxSet = SC.IndexSet.create({
-            source: this
-          });
+          idxSet = SC.IndexSet.create();
           this._keyMap[insertionKey] = idxSet;
         }
         idxSet.add(idx); // idxSet should maintain uniqueness for us
